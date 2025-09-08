@@ -1,0 +1,136 @@
+#include "CONFIG.h"
+#include "states.h"
+#include "lib/encMinim.h"
+#include "lib/rtc/RtcDS1302.h"
+//#include "lib/Timer.h"
+#include <GyverBME280.h>
+#include <LiquidCrystal_I2C.h>
+
+
+#include "eeprom_control.h"
+#include "display.h"
+#include "arrowControl.h"
+
+#define ONE_SECOND 1000
+#define HALF_MINUTE 30000
+#define ONE_MINUTE 60000 // 1 minute = 60 sec = 60 000 milliseconds
+#define ONE_HOUR  36,000,000// 1hour = 60 minute = 3600 sec = 36 000 000 milliseconds
+
+
+
+
+
+/*
+#define s1 7
+#define s2 6
+#define sw 8
+*/
+
+
+encMinim enc(7, 6, 8, 0);
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+ThreeWire myWire(4, 5, 2);
+RtcDS1302<ThreeWire> rtc(myWire);
+GyverBME280 bme;
+ArrowControl arrow;
+
+
+// finite state machine
+FSM state {IDLE};
+
+uint32_t menu_tmr {0}; 
+uint32_t time_tmr {0};
+
+
+void setup() {
+  //#if LOG
+  Serial.begin(9600);
+  Serial.println("Starting!!!!");
+  //#endif
+  lcd.init(); // display
+  lcd.backlight();
+
+  rtc.Begin(); // real time clock
+  bme.begin(); // bme280
+
+  /* real time clock check & init*/
+
+  // --------------- RTC INIT -------------------
+  RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
+
+  if (!rtc.IsDateTimeValid()) {
+    #if LOG
+    Serial.println("Rtc lost confidence in the DateTime!");
+    #endif
+    rtc.SetDateTime(compiled);
+  }
+
+  if (rtc.GetIsWriteProtected()) rtc.SetIsWriteProtected(false);
+  if (!rtc.GetIsRunning()) rtc.SetIsRunning(true);
+
+  #if SET_TIME
+  rtc.SetDateTime(compiled);
+  #endif
+
+  RtcDateTime now = rtc.GetDateTime();
+  
+
+  if (now < compiled) rtc.SetDateTime(compiled);
+  // ---------------- RTC INIT ------------------- 
+
+  /*
+  #if LOG
+  Serial.print(now.Hour());
+  Serial.print(":");
+  Serial.print(now.Minute());
+  Serial.println();
+  #endif
+  */
+
+
+
+  state = MAIN_MENU;
+  drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
+  updateTime(lcd, now);
+
+  isFirstRun();
+  if (isFirstRun()) {
+    initEEPROM(); // First run
+    #if LOG
+    Serial.println("First run: EEPROM init...");
+    #endif
+  }
+
+}
+
+
+
+void loop() {
+  enc.tick(); // encoder handler
+
+
+  switch (state)
+  {
+    case MAIN_MENU:
+      arrow.menuTick(enc, lcd, state);
+      if (millis() - time_tmr >= HALF_MINUTE) {
+        time_tmr = millis();
+        #if LOG
+        Serial.println("Updating Time");
+        #endif
+        RtcDateTime now = rtc.GetDateTime();
+        updateTime(lcd, now);
+      }
+
+      if (millis() - menu_tmr >= ONE_SECOND) {
+        menu_tmr = millis();
+        drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
+      }
+      break;
+
+    
+    case CHANNELS:
+      arrow.channelsTick(enc, lcd, state);
+      break;
+  }
+}
