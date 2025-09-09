@@ -7,7 +7,7 @@
 #define EEPROM_KEY_ADDRESS 1023
 #define EEPROM_KEY 22
 
-#define CHANNELS 8 
+#define CHANNELS_COUNT 8 
 #define SERVOS 4 // later
 
 #define CHANNELS_ADDRESS 0
@@ -27,7 +27,7 @@ struct Channel {
 };
 
 struct Channels {
-    Channel channel[CHANNELS] {}; // 9 * 8 =  72 bytes
+    Channel channel[CHANNELS_COUNT] {}; // 9 * 8 =  72 bytes
 };
 
 
@@ -74,7 +74,7 @@ void updateChannels(Channels& channels) {
 }
 
 Channel getChannel(int8_t n) { // return get N'th struct in Channels
-    if (n > 0 && n <= CHANNELS) {
+    if (n > 0 && n <= CHANNELS_COUNT) {
         Channel channel;
         EEPROM.get(CHANNELS_ADDRESS + n * sizeof(Channel), channel);
         return channel;
@@ -82,5 +82,5 @@ Channel getChannel(int8_t n) { // return get N'th struct in Channels
 }
 
 void putChannel(int8_t n, Channel& channel) { // put N'th struct in Channels
-    if (n > 0 && n <= CHANNELS) EEPROM.put(CHANNELS_ADDRESS + n * sizeof(Channel), channel);
+    if (n > 0 && n <= CHANNELS_COUNT) EEPROM.put(CHANNELS_ADDRESS + n * sizeof(Channel), channel);
 }

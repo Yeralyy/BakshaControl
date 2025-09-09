@@ -37,6 +37,7 @@ ArrowControl arrow;
 
 // finite state machine
 FSM state {IDLE};
+FSM lastState {IDLE};
 
 uint32_t menu_tmr {0}; 
 uint32_t time_tmr {0};
@@ -112,12 +113,16 @@ void loop() {
   switch (state)
   {
     case MAIN_MENU:
+
       arrow.menuTick(enc, lcd, state);
       if (millis() - time_tmr >= HALF_MINUTE) {
-        time_tmr = millis();
+        time_tmr = millis(); // genius code huh?
         #if LOG
         Serial.println("Updating Time");
         #endif
+        RtcDateTime now = rtc.GetDateTime();
+        updateTime(lcd, now);
+      } else if (lastState != MAIN_MENU) {
         RtcDateTime now = rtc.GetDateTime();
         updateTime(lcd, now);
       }
@@ -126,11 +131,13 @@ void loop() {
         menu_tmr = millis();
         drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
       }
+      lastState = MAIN_MENU;
       break;
 
     
     case CHANNELS:
       arrow.channelsTick(enc, lcd, state);
+      lastState = CHANNELS;
       break;
   }
 }

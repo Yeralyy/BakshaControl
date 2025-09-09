@@ -6,8 +6,10 @@ enum FSM : uint8_t {
  MAIN_MENU,
  SERVICE,
  CHANNELS,
- SENSORS
+ SENSORS,
+ // sub states of [SERVICE, CHANNELS, SENSORS]
 };
+
 
 enum Mode : uint8_t {
     OFF = 0, // idle state
