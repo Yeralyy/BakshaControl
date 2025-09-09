@@ -10,6 +10,7 @@ class encMinim
     encMinim(uint8_t clk, uint8_t dt, int8_t sw, boolean dir, boolean type = 0);
     void tick(bool hold = false);
     boolean isClick();
+    boolean isDouble();
     boolean isHolded();
     boolean isTurn();
     boolean isRight();
@@ -17,8 +18,9 @@ class encMinim
     boolean isRightH();
     boolean isLeftH();
     boolean isFast();
+    
 
-    // 0 - ничего, 1 - лево, 2 - право, 3 - правоНажат, 4 - левоНажат, 5 - клик, 6 - удержан
+    // 0 - ничего, 1 - лево, 2 - право, 3 - правоНажат, 4 - левоНажат, 5 - клик, 6 - удержан, 7 - double click
     byte getState();
 
     // сбросить state
@@ -31,7 +33,8 @@ class encMinim
     volatile byte _state, _lastState, _encState;
     volatile bool _resetFlag = false;
     volatile uint32_t _debTimer;
-    // _encState: 0 - ничего, 1 - лево, 2 - право, 3 - правоНажат, 4 - левоНажат, 5 - клик, 6 - удержан
+    //volatile uin8_t _clicks {0}
+    // _encState: 0 - ничего, 1 - лево, 2 - право, 3 - правоНажат, 4 - левоНажат, 5 - клик, 6 - удержан, 7 - double click
 };
 
 encMinim::encMinim(uint8_t clk, uint8_t dt, int8_t sw, boolean dir, boolean type) {
@@ -151,4 +154,12 @@ boolean encMinim::isHolded() {
     _encState = 0;
     return true;
   } else return false;
+}
+
+boolean encMinim::isDouble() {
+  if (_encState == 7) {
+    _encState = 0;
+    return true;
+  } else return false;
+
 }

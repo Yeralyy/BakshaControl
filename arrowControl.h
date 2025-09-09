@@ -29,12 +29,15 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
         /*  Service
             Channels
             Sensors*/
-        lcd.setCursor(12, 0); 
-        lcd.print("Channels"); // arrow (10, 0)
+        lcd.setCursor(11, 0); 
+        lcd.print(">Channels"); // arrow (11, 0)
         lcd.setCursor(13, 1);
         lcd.print("Service"); // arrow (11, 1);
         lcd.setCursor(13, 2);
         lcd.print("Sensors"); // arrow (11, 2);
+
+
+        _count = 0;
         _first = 0;
     }
 
@@ -109,6 +112,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
         // getting N channel 
 
         Channel currentChannel {getChannel(_count)};
+        #if TEST
+        currentChannel.mode = TIMER;
+        #endif
         switch (currentChannel.mode) {
             case OFF:
                 lcd.setCursor(17, 0);
@@ -122,12 +128,40 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 lcd.print("Mode: ");
                 lcd.print("<Timer>");
 
-                lcd.setCursor(0, 2);
-                lcd.print("Uptime: ");
+                //lcd.setCursor(0, 2);
+                //lcd.print("Uptime: ");
             
-                lcd.print(currentChannel.timer * 60000);  // in minutes
-                lcd.print("min");
+                //lcd.print(currentChannel.timer * 60000);  // in minutes
+                //lcd.print("min");
+
+                lcd.setCursor(16, 3);
+                lcd.print("Back");
                 break;
+
+            case RTC:
+                lcd.setCursor(18, 0);
+                lcd.print("On");
+                
+                lcd.setCursor(0, 1);
+                lcd.print("Mode: ");
+                lcd.print("<RTC>");
+
+                lcd.setCursor(16, 3);
+                lcd.print("Back");
+
+                //lcd.print("00.00 00:00");
+                break;
+
+            case SENSOR:
+                lcd.setCursor(18, 0);
+                lcd.print("On");
+
+                lcd.setCursor(0, 1);
+                lcd.print("Mode: ");
+                lcd.print("<Sensor>");
+
+                lcd.setCursor(16, 3);
+                lcd.print("Back");
         }
 
         _first = 0; }
