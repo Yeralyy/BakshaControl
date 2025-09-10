@@ -5,7 +5,7 @@
 #include "eeprom_control.h"
 
 
-
+// MUSTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARD
 
 class ArrowControl {
     public:
@@ -13,6 +13,8 @@ class ArrowControl {
         void menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
         void channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
     private:
+        Channel currentChannel;
+
         uint8_t _start_index {0};
         uint8_t _end_index;
         int8_t _count;
@@ -21,6 +23,7 @@ class ArrowControl {
         bool _changedFlag {0};
         bool _first {1};
         bool _inChannelFlag {0};
+        bool _newReadFlag {1}; // Flag for EEPROM read
 
 
 };
@@ -99,7 +102,15 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
     }
 }
 
+
+
+
+
+
+
+
 void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) {
+    // ======================= CLEAR DISPLAY. PRINT ====================
     if (_first) {
 
         if (_count < 1) _count = 1;
@@ -116,7 +127,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
         // getting N channel 
 
-        Channel currentChannel {getChannel(_count)};
+        if (_newReadFlag) {
+        currentChannel = {getChannel(_count)};
+        }
         #if TEST
         currentChannel.mode = TIMER;
         #endif
@@ -125,6 +138,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
             case OFF:
                 lcd.setCursor(17, 0);
                 lcd.print("Off");
+
+                lcd.setCursor(16, 3);
+                lcd.print("Back");
                 break;
             case TIMER:
                 lcd.setCursor(18, 0);
@@ -176,9 +192,10 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
         // ==================================== ARROW TRACKING ==============================
 
         if (_inChannelFlag) {
-            Channel currentChannel {getChannel(_count)}; // getting channel information from EEPROM
-            currentChannel.mode = TIMER;
+            
+            //Channel currentChannel {getChannel(_count)}; // getting channel information from EEPROM
             // arrow pos tracking
+
             if (enc.isRight()) {
                 _indexFlag = _index;
                 ++_index;
@@ -189,8 +206,15 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 --_index;
                 _changedFlag = 1; }
 
-            if (_index < 0) { _index = 0; _changedFlag = 0; }
-            else if (_index > 3) {_index = 3; _changedFlag = 0; } // constraining
+            if (currentChannel.mode != OFF) {
+                if (_index < 0) { _index = 0; _changedFlag = 0; }
+                else if (_index > 3) {_index = 3; _changedFlag = 0; } // constraining
+            } else {
+                if (_index < 0) { _index = 0; _changedFlag = 0; } // if mode is OFF
+                else if (_index == 2 && _indexFlag != 3) {_index = 3; }
+                else if (_index == 2) {_index = 1; }
+                else if (_index > 3) {_index = 3; _changedFlag = 0; }
+            }
 
             if (_changedFlag) {
                 // deleting old arrow
@@ -317,7 +341,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 Serial.println("Chaning state to MAIN_MENU");
                 #endif
                 lcd.clear();
-                state = MAIN_MENU;
+                state = MAIN_MENU; // MAIN_MENU
                 _first = 1;
                 return;
             }
@@ -330,26 +354,44 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         _first = 1; 
                         _inChannelFlag = 0;
                         _changedFlag = 1;
-                        lcd.clear(); 
                         break;
 
-                        //case 1:
-                         //   lcd.setCursor()
+                    case 1:
+                        // ON/OFF
+                        if (currentChannel.mode == OFF) { 
+                            currentChannel.mode = TIMER; // setting to default mode
+                            lcd.clear();
+                            _first = 1;
+                            _changedFlag = 1;
+                            break;
+                        }
+
 
 
                     }
                 }
 
+            if (enc.isLeftH()) {
+                switch (_index) {
+                    case 0:
+                        --_count;
+                        _first = 1;
+                        
+                }
+                    
+            }
 
-                
+
             
             } 
 
-        if (enc.isTurn()) {
-            if (enc.isRightH() && !_inChannelFlag) {++_count; _first = 1; _changedFlag = 1; }
-            if (enc.isLeftH() && !_inChannelFlag) {--_count; _first = 1; _changedFlag = 1; }
+        if (enc.isTurn() && !_inChannelFlag) {
+            if (enc.isRightH()) {++_count; _first = 1; _changedFlag = 1; }
+            if (enc.isLeftH()) {--_count; _first = 1; _changedFlag = 1; }
         }
         
         if (enc.isClick()) { _inChannelFlag = 1;}
 
         }
+
+    

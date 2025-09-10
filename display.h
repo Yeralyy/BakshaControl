@@ -23,7 +23,7 @@ void drawMainMenu(LiquidCrystal_I2C& lcd, float temperature, float humidity) {
 
 void updateTime(LiquidCrystal_I2C& lcd, RtcDateTime& time) {
 
-    #ifdef LOG
+    #if LOG
     Serial.print("Size of RtcDateTime: ");
     Serial.print(sizeof(time));
     Serial.println();

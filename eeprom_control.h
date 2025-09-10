@@ -66,7 +66,13 @@ void initEEPROM(void) {
 }
 
 void factoryReset(void) {
+    Channels channels;
 
+    EEPROM.put(CHANNELS_ADDRESS, channels); // default values
+
+    #if LOG
+    Serial.println("EEPROM Factory reset");
+    #endif
 }
 
 void updateChannels(Channels& channels) {

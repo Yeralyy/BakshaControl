@@ -44,10 +44,10 @@ uint32_t time_tmr {0};
 
 
 void setup() {
-  //#if LOG
+  #if LOG
   Serial.begin(9600);
   Serial.println("Starting!!!!");
-  //#endif
+  #endif
   lcd.init(); // display
   lcd.backlight();
 
@@ -94,12 +94,15 @@ void setup() {
   drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
   updateTime(lcd, now);
 
-  isFirstRun();
   if (isFirstRun()) {
     initEEPROM(); // First run
     #if LOG
     Serial.println("First run: EEPROM init...");
     #endif
+  }
+
+  if (!digitalRead(8)) {
+    factoryReset();
   }
 
 }
