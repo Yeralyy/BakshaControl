@@ -66,7 +66,7 @@ void initEEPROM(void) {
 }
 
 void factoryReset(void) {
-    Channels channels;
+    Channels channels {};
 
     EEPROM.put(CHANNELS_ADDRESS, channels); // default values
 

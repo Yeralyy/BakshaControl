@@ -1,8 +1,7 @@
 #include "CONFIG.h"
 #include "states.h"
 #include "lib/encMinim.h"
-#include "lib/rtc/RtcDS1302.h"
-//#include "lib/Timer.h"
+#include "lib/rtc/RtcDS1302.h" //#include "lib/Timer.h"
 #include <GyverBME280.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -54,6 +53,7 @@ void setup() {
   rtc.Begin(); // real time clock
   bme.begin(); // bme280
 
+
   /* real time clock check & init*/
 
   // --------------- RTC INIT -------------------
@@ -104,14 +104,35 @@ void setup() {
   if (!digitalRead(8)) {
     factoryReset();
   }
-
+  
+  #if LOG
+  for (int i = 0; i < 8; ++i) {
+    Channel channel {getChannel(i)};
+    
+    Serial.print("Channel: ");
+    Serial.print(i);
+    Serial.print(" Mode: ");
+    
+    switch (channel.mode) {
+      case OFF:
+        Serial.print("OFF");
+        break;
+      case TIMER:
+        Serial.print("Timer");
+        break;
+      case RTC:
+        Serial.print("RTC");
+        break;
+    }
+    Serial.println();
+  }
+  #endif
 }
 
 
 
 void loop() {
   enc.tick(); // encoder handler
-
 
   switch (state)
   {
