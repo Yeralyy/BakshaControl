@@ -9,14 +9,11 @@
 
 class ArrowControl {
     public:
-        void setRange(uint8_t start_index, uint8_t end_index);
         void menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
         void channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
     private:
         Channel currentChannel;
 
-        uint8_t _start_index {0};
-        uint8_t _end_index;
         int8_t _count;
         int8_t _index; // arrow index
         int8_t _indexFlag;
@@ -25,17 +22,15 @@ class ArrowControl {
         bool _inChannelFlag {0};
         bool _newReadFlag {1}; // Flag for EEPROM read
 
+        void redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
-
 
 };
 
 
-void ArrowControl::setRange(uint8_t start_index, uint8_t end_index) {
-    _start_index = start_index; _end_index = end_index; }
 
 void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  {
-    updateDisplay(lcd, state);
+    redrawDisplay(lcd, state);
 
     if (enc.isTurn()) {
         if (enc.isRight()) ++_count;
@@ -78,31 +73,8 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
     if (_count < 0) _count = 2;
     if (_count > 2) _count = 0;
 
-    if (_changedFlag) { // 
-        lcd.setCursor(11, 0);
-        lcd.print(" ");
-        lcd.setCursor(12, 1);
-        lcd.print(" ");
-        lcd.setCursor(12, 2);
-        lcd.print(" ");
+    updateDisplay(lcd, state); // arrows
 
-        switch (_count) {
-            case 0:
-                lcd.setCursor(11, 0);
-                lcd.print('>');
-                break;
-            case 1:
-                lcd.setCursor(12, 1);
-                lcd.print('>');
-                break;
-            case 2:
-                lcd.setCursor(12, 2);
-                lcd.print('>');
-                break;
-        }
-
-        _changedFlag = 0;
-    }
 }
 
 
@@ -113,7 +85,7 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
 
 
 void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) {
-    updateDisplay(lcd, state);
+    redrawDisplay(lcd, state);
         // ==================================== ARROW TRACKING ==============================
 
         if (_inChannelFlag) {
@@ -141,133 +113,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 else if (_index > 3) {_index = 3; _changedFlag = 0; }
             }
 
-            if (_changedFlag) {
-                // deleting old arrow
-
-                switch (_indexFlag) { // Switch to detect last arrow pos and clearing it
-                    case 0:
-                        lcd.setCursor(0, 0);
-                        lcd.print("          ");
-                        lcd.setCursor(0, 0);
-                        lcd.print("Channel ");
-                        lcd.print(_count);
-                        break;
-                    case 1:
-                        if (currentChannel.mode != OFF) { // On/Off selector
-                            lcd.setCursor(16, 0);
-                            lcd.print("   ");
-                            lcd.setCursor(18, 0);
-                            lcd.print("On");
-                        } else {
-                            lcd.setCursor(16, 0);
-                            lcd.print("    ");
-                            lcd.setCursor(17, 0);
-                            lcd.print("Off"); }
-                        
-
-                        break;
-
-                    case 2: // Mode selector
-                        switch (currentChannel.mode) {
-                            case TIMER:
-                                lcd.setCursor(0, 1);
-                                lcd.print("              ");
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: ");
-                                lcd.print("<Timer>");
-                                break;
-                                    
-                            case RTC:
-                                lcd.setCursor(0, 1);
-                                lcd.print("          ");
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: ");
-                                lcd.print("<RTC>");
-                                break;
-                                   
-                            case SENSOR:
-                                lcd.setCursor(0, 1);
-                                lcd.print("              ");
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: ");
-                                lcd.print("<Sensor>");
-                                break;
-                            }
-                        break;
-
-                    case 3: // Back
-                        lcd.setCursor(15, 3);
-                        lcd.print("     ");
-                        lcd.setCursor(16, 3);
-                        lcd.print("Back");
-                        break;
-                    
-                    #if LOG
-                    Serial.println("Removing old arrow");
-                    #endif
-                        }
-                
-                /* Inserting new arrow in new position */
-
-                switch (_index) {
-                    case 0:
-                        lcd.setCursor(0, 0);
-                        lcd.print("         ");
-                        lcd.setCursor(0, 0);
-                        lcd.print(">Channel ");
-                        lcd.print(_count);
-                        break;
-                    case 1:
-                        if (currentChannel.mode != OFF) { // On/Off selector
-                            lcd.setCursor(17, 0);
-                            lcd.print('>');
-                        } else {
-                            lcd.setCursor(16, 0);
-                            lcd.print('>');
-                        }
-
-                        break;
-
-                    case 2: // Mode selector
-                        switch (currentChannel.mode) {
-                            case TIMER:
-                                lcd.setCursor(0, 1);
-                                lcd.print("             ");
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: ");
-                                lcd.print("<Timer>");
-                                break;
-                                    
-                            case RTC:
-                                lcd.setCursor(0, 1);
-                                lcd.print("          ");
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: ");
-                                lcd.print("<RTC>");
-                                break;
-                                   
-                            case SENSOR:
-                                lcd.setCursor(0, 1);
-                                lcd.print("              ");
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: ");
-                                lcd.print("<Sensor>");
-                                break;
-                            }
-                        break;
-
-                    case 3: // Back
-                        lcd.setCursor(15, 3);
-                        lcd.print('>');
-                        break;
-                    
-                    #if LOG
-                    Serial.println("Drawing new arrow");
-                    #endif
-                // ====================================== ARROW TRACKING END ===========================
-                }
-                _changedFlag = 0;
-            }
+            if (_changedFlag) updateDisplay(lcd, state);    
 
             if (enc.isClick() && _index == 3) {
                 #if LOG
@@ -277,6 +123,10 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 state = MAIN_MENU; // MAIN_MENU
                 _first = 1;
                 _inChannelFlag = 0;
+                _index = 0;
+
+                // saving current channel settings
+                putChannel(_count, currentChannel);
             }
                 
             /* Detecting enc actions */
@@ -421,32 +271,11 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
                 }
             }
-
-            /*
-            if (enc.isLeftH()) {
-                switch (_index) {
-                    case 0:
-                        --_count;
-                        _first = 1;
-                        break;
-                        
-                }
-            }
-                */
-
-
-            
-            } 
+        } 
 
         if (enc.isRightH() && !_inChannelFlag) {++_count; _first = 1; _changedFlag = 1; }
         if (enc.isLeftH() && !_inChannelFlag) {--_count; _first = 1; _changedFlag = 1; }
 
-        /*
-        #if LOG
-        Serial.println("Channel change");
-        #endif
-        */
-        
         if (enc.isClick()) { 
             _inChannelFlag = 1;
             #if LOG
@@ -457,7 +286,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
         }
 
 
-void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
+void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
     if (_first) {
         switch (state) {
             case MAIN_MENU:
@@ -526,8 +355,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         lcd.print("On");
 
                         lcd.setCursor(0, 1);
-                        lcd.print("Mode: ");
-                        lcd.print("<Timer>");
+                        lcd.print("Mode: <Timer>");
 
                         lcd.setCursor(16, 3);
                         lcd.print("Back");
@@ -538,8 +366,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         lcd.print("On");
                 
                         lcd.setCursor(0, 1);
-                        lcd.print("Mode: ");
-                        lcd.print("<RTC>");
+                        lcd.print("Mode: <RTC>");
 
                         lcd.setCursor(16, 3);
                         lcd.print("Back");
@@ -551,8 +378,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         lcd.print("On");
 
                         lcd.setCursor(0, 1);
-                        lcd.print("Mode: ");
-                        lcd.print("<Sensor>");
+                        lcd.print("Mode: <Sensor>");
 
                         lcd.setCursor(16, 3);
                         lcd.print("Back");
@@ -564,4 +390,175 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
         }
         _first = 0;
     }
+}
+
+void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
+
+    switch (state) {
+        case MAIN_MENU:
+         
+            if (_changedFlag) { // 
+                lcd.setCursor(11, 0);
+                lcd.print(" ");
+                lcd.setCursor(12, 1);
+                lcd.print(" ");
+                lcd.setCursor(12, 2);
+                lcd.print(" ");
+
+            switch (_count) {
+                case 0:
+                    lcd.setCursor(11, 0);
+                    lcd.print('>');
+                    break;
+                case 1:
+                    lcd.setCursor(12, 1);
+                    lcd.print('>');
+                    break;
+                case 2:
+                    lcd.setCursor(12, 2);
+                    lcd.print('>');
+                    break; }
+           
+
+            _changedFlag = 0; }
+
+            break;
+
+        case CHANNELS:
+            if (_changedFlag) {
+                // deleting old arrow
+
+                switch (_indexFlag) { // Switch to detect last arrow pos and clearing it
+                    case 0:
+                        lcd.setCursor(0, 0);
+                        lcd.print("          ");
+                        lcd.setCursor(0, 0);
+                        lcd.print("Channel ");
+                        lcd.print(_count);
+                        break;
+                    case 1:
+                        if (currentChannel.mode != OFF) { // On/Off selector
+                            lcd.setCursor(16, 0);
+                            lcd.print("   ");
+                            lcd.setCursor(18, 0);
+                            lcd.print("On");
+                        } else {
+                            lcd.setCursor(16, 0);
+                            lcd.print("    ");
+                            lcd.setCursor(17, 0);
+                            lcd.print("Off"); }
+                        
+
+                        break;
+
+                    case 2: // Mode selector
+                        switch (currentChannel.mode) {
+                            case TIMER:
+                                lcd.setCursor(0, 1);
+                                lcd.print("                    ");
+                                lcd.setCursor(0, 1);
+                                lcd.print("Mode: ");
+                                lcd.print("<Timer>");
+                                break;
+                                    
+                            case RTC:
+                                lcd.setCursor(0, 1);
+                                lcd.print("                    ");
+                                lcd.setCursor(0, 1);
+                                lcd.print("Mode: ");
+                                lcd.print("<RTC>");
+                                break;
+                                   
+                            case SENSOR:
+                                lcd.setCursor(0, 1);
+                                lcd.print("                    ");
+                                lcd.setCursor(0, 1);
+                                lcd.print("Mode: ");
+                                lcd.print("<Sensor>");
+                                break;
+                            }
+                        break;
+
+                    case 3: // Back
+                        lcd.setCursor(15, 3);
+                        lcd.print("     ");
+                        lcd.setCursor(16, 3);
+                        lcd.print("Back");
+                        break;
+                    
+                    #if LOG
+                    Serial.println("Removing old arrow");
+                    #endif
+                        }
+                
+                /* Inserting new arrow in new position */
+
+                switch (_index) {
+                    case 0:
+                        lcd.setCursor(0, 0);
+                        lcd.print("         ");
+                        lcd.setCursor(0, 0);
+                        lcd.print(">Channel ");
+                        lcd.print(_count);
+                        break;
+                    case 1:
+                        if (currentChannel.mode != OFF) { // On/Off selector
+                            lcd.setCursor(17, 0);
+                            lcd.print('>');
+                        } else {
+                            lcd.setCursor(16, 0);
+                            lcd.print('>');
+                        }
+
+                        break;
+
+                    case 2: // Mode selector
+                        switch (currentChannel.mode) {
+                            case TIMER:
+                                lcd.setCursor(0, 1);
+                                lcd.print("             ");
+                                lcd.setCursor(0, 1);
+                                lcd.print(">Mode: ");
+                                lcd.print("<Timer>");
+                                break;
+                                    
+                            case RTC:
+                                lcd.setCursor(0, 1);
+                                lcd.print("          ");
+                                lcd.setCursor(0, 1);
+                                lcd.print(">Mode: ");
+                                lcd.print("<RTC>");
+                                break;
+                                   
+                            case SENSOR:
+                                lcd.setCursor(0, 1);
+                                lcd.print("              ");
+                                lcd.setCursor(0, 1);
+                                lcd.print(">Mode: ");
+                                lcd.print("<Sensor>");
+                                break;
+                            }
+                        break;
+
+                    case 3: // Back
+                        lcd.setCursor(15, 3);
+                        lcd.print('>');
+                        break;
+                    
+                    #if LOG
+                    Serial.println("Drawing new arrow");
+                    #endif
+                // ====================================== ARROW TRACKING END ===========================
+                }
+                _changedFlag = 0;
+            }
+
+
+
+        
+            break;
+
+            
+    }
+
 }

@@ -42,6 +42,10 @@ bool isFirstRun(void);
 
 
 bool isFirstRun(void) {
+    #if LOG
+    Serial.print("EEPROM KEY ADDRES VALUE: ");
+    Serial.print(EEPROM.read(EEPROM_KEY_ADDRESS));
+    #endif
     return ((EEPROM.read(EEPROM_KEY_ADDRESS) == EEPROM_KEY) ? 0 : 1); // first run?
 }
 
@@ -66,9 +70,10 @@ void initEEPROM(void) {
 }
 
 void factoryReset(void) {
-    Channels channels {};
-
-    EEPROM.put(CHANNELS_ADDRESS, channels); // default values
+    for (int8_t i; i <= 8; i++) {
+        Channel channel {};
+        putChannel(i, channel);
+    }
 
     #if LOG
     Serial.println("EEPROM Factory reset");

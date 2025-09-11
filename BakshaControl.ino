@@ -94,6 +94,10 @@ void setup() {
   drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
   updateTime(lcd, now);
 
+  if (!digitalRead(8)) {
+    factoryReset();
+  }
+
   if (isFirstRun()) {
     initEEPROM(); // First run
     #if LOG
@@ -101,12 +105,13 @@ void setup() {
     #endif
   }
 
-  if (!digitalRead(8)) {
-    factoryReset();
-  }
+  #if INIT_EEPROM
+  initEEPROM();
+  #endif
+
   
   #if LOG
-  for (int i = 0; i < 8; ++i) {
+  for (int i = 1; i <= 8; ++i) {
     Channel channel {getChannel(i)};
     
     Serial.print("Channel: ");

@@ -9,3 +9,4 @@ File for defining config values
 #define SET_TIME 0 // Set 1 and flash to set time, 0 - nothing
 
 #define TEST 0
+#define INIT_EEPROM 0
