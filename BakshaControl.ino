@@ -13,7 +13,7 @@
 #define ONE_SECOND 1000
 #define HALF_MINUTE 30000
 #define ONE_MINUTE 60000 // 1 minute = 60 sec = 60 000 milliseconds
-#define ONE_HOUR  36,000,000// 1hour = 60 minute = 3600 sec = 36 000 000 milliseconds
+#define ONE_HOUR  36000000UL // 1hour = 60 minute = 3600 sec = 36 000 000 milliseconds
 
 
 
@@ -138,6 +138,7 @@ void setup() {
 
 void loop() {
   enc.tick(); // encoder handler
+  RtcDateTime now = rtc.GetDateTime();
 
   switch (state)
   {
@@ -149,10 +150,10 @@ void loop() {
         #if LOG
         Serial.println("Updating Time");
         #endif
-        RtcDateTime now = rtc.GetDateTime();
+        //RtcDateTime now = rtc.GetDateTime();
         updateTime(lcd, now);
       } else if (lastState != MAIN_MENU) {
-        RtcDateTime now = rtc.GetDateTime();
+        //RtcDateTime now = rtc.GetDateTime();
         updateTime(lcd, now);
       }
 
@@ -167,6 +168,10 @@ void loop() {
     case CHANNELS:
       arrow.channelsTick(enc, lcd, state);
       lastState = CHANNELS;
+      break;
+
+    case MODES:
+      arrow.modesTick(enc, lcd, state);
       break;
   }
 }
