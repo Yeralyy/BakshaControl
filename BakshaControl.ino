@@ -44,8 +44,7 @@ uint32_t time_tmr {0};
 
 void setup() {
   #if LOG
-  Serial.begin(9600);
-  Serial.println("Starting!!!!");
+  Serial.begin(115200);
   #endif
   lcd.init(); // display
   lcd.backlight();
@@ -61,7 +60,7 @@ void setup() {
 
   if (!rtc.IsDateTimeValid()) {
     #if LOG
-    Serial.println("Rtc lost confidence in the DateTime!");
+    //Serial.println("Rtc lost confidence in the DateTime!");
     #endif
     rtc.SetDateTime(compiled);
   }
@@ -101,7 +100,7 @@ void setup() {
   if (isFirstRun()) {
     initEEPROM(); // First run
     #if LOG
-    Serial.println("First run: EEPROM init...");
+    Serial.println(F("fr:eeprm init"));
     #endif
   }
 
@@ -110,7 +109,9 @@ void setup() {
   #endif
 
   
+  /*
   #if LOG
+  
   for (int i = 1; i <= 8; ++i) {
     Channel channel {getChannel(i)};
     
@@ -132,13 +133,21 @@ void setup() {
     Serial.println();
   }
   #endif
+  */
 }
 
 
 
+
 void loop() {
+
+  #if LOG
+  Serial.println(state);
+  #endif
+
   enc.tick(); // encoder handler
   RtcDateTime now = rtc.GetDateTime();
+
 
   switch (state)
   {
@@ -148,7 +157,7 @@ void loop() {
       if (millis() - time_tmr >= HALF_MINUTE) {
         time_tmr = millis(); // genius code huh?
         #if LOG
-        Serial.println("Updating Time");
+        Serial.println(F("Updating Time"));
         #endif
         //RtcDateTime now = rtc.GetDateTime();
         updateTime(lcd, now);

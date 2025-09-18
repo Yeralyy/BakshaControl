@@ -3,6 +3,8 @@
 #include <LiquidCrystal_I2C.h>
 #include "eeprom_control.h"
 #include "lib/rtc/RtcDateTime.h"
+#include "utils.h"
+
 
 #include "states.h"
 
@@ -29,9 +31,12 @@ class ArrowControl {
         bool _inChannelFlag {0};
         bool _newReadFlag {1}; // Flag for EEPROM read
         bool _channelFlag {0};
+	    bool _settingsChanged {0};
+        uint8_t _oneByte {0};
 
         void redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
+        void constrainModes();
 };
 
 
@@ -45,7 +50,7 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
         if (enc.isLeft()) --_count;
         _changedFlag = 1;  
         #if LOG
-        Serial.println("MAIN_MENU: Encoder turn");
+        Serial.println(F("MAIN_MENU:Enc t"));
         #endif
     }
 
@@ -55,21 +60,21 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
                 state = CHANNELS;
                 _count = 1;
                 #if LOG
-                Serial.println("State changed to CHANNELS");
+                Serial.println(F("State->CHANNELS"));
                 #endif
 
                 break;
             case 1:
                 state = SERVICE;
                 #if LOG
-                Serial.println("State changed to SERVICE");
+                Serial.println(F("State->SERVICE"));
                 #endif
 
                 break;
             case 2:
                 state = SENSORS; // FSM& 
                 #if LOG
-                Serial.println("State changed to DAY");
+                Serial.println(F("State->DAY"));
                 #endif
 
                 break;
@@ -89,6 +94,7 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
 
 void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) {
     redrawDisplay(lcd, state);
+
         // ==================================== ARROW TRACKING ==============================
 
         if (_inChannelFlag) {
@@ -117,7 +123,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
             if (_index == 3 && enc.isClick()) {
                 #if LOG
-                Serial.println("Changing state to MAIN_MENU");
+                Serial.println(F("state->MAIN_MENU"));
                 #endif
                 lcd.clear();
                 state = MAIN_MENU; // MAIN_MENU
@@ -134,7 +140,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
             if (_index == 2 && enc.isClick()) {
                 #if LOG
-                Serial.println("Changing state to MODES");
+                Serial.println(F("state->MODES"));
                 #endif
                 lcd.clear();
                 
@@ -149,6 +155,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 switch (_index) {
                     case 0: // 
                         /* Saving Channel settings*/
+
                         if (_channelFlag) {
                             putChannel(_count, currentChannel);
                             _channelFlag = 0;
@@ -164,7 +171,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         _channelFlag = 1;
 
                         #if LOG
-                        Serial.println("Next Channel, Previous saved into EEPROM");
+                        Serial.println(F("++Channel Prev saved"));
                         #endif
 
                         break;
@@ -196,15 +203,22 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 break;
                         }
                         
-                        _channelFlag = 1;
+                        _changedFlag = 1;
 
                         break;
                     
                     case 2:
+                        #if LOG
+                        Serial.println(F("Changing mode++"));            
+                        #endif
+
                         if (currentChannel.mode != OFF) currentChannel.mode++; // Next Mode
 
                         lcd.setCursor(0, 1); 
                         lcd.print("                   "); // clearing Mode
+                        #if LOG
+                        Serial.println(F("Clearing mode"));
+                        #endif
 
                         switch (currentChannel.mode) {
                             case TIMER:
@@ -226,9 +240,15 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.setCursor(0, 1);
                                 lcd.print("Mode: <Sensor>");
                                 break;
+                            default:
+                                #if LOG
+                                Serial.println("Unxecpected mode");
+                                #endif
+                                break;
                         }
 
                         _channelFlag = 1;
+                        
 
                         break;
 
@@ -256,7 +276,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         _channelFlag = 1;
 
                         #if LOG
-                        Serial.println("Previous Channel. Current one settings saved");
+                        Serial.println(F("-Channel Current saved"));
                         #endif
 
                         break;
@@ -279,6 +299,10 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
                     case 2:
                         if (currentChannel.mode != OFF) currentChannel.mode--; // Decrement Mode
+
+                        #if LOG
+                        Serial.println(F("Changing mode--"));            
+                        #endif
 
                         lcd.setCursor(0, 1);
                         lcd.print("                   ");
@@ -303,6 +327,11 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.setCursor(0, 1);
                                 lcd.print("Mode: <Sensor>");
                                 break;
+                            default:
+                                #if LOG
+                                Serial.println(F("Unexptected Mode"));
+                                #endif
+                                break;
                         }
 
                         _channelFlag = 1;
@@ -321,9 +350,11 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
         if (enc.isClick()) { 
             _inChannelFlag = 1;
             #if LOG
-            Serial.println("In Channel settings");
+            Serial.println(F("!In Channel"));
             #endif
         }
+
+        updateDisplay(lcd, state);
 
         }
 
@@ -360,73 +391,244 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
             break;    
    }
 
-    if (_changedFlag) updateDisplay(lcd, state);
+    if (_changedFlag || _settingsChanged) updateDisplay(lcd, state);
 
 
-   /*
-   if (_index != 0 && enc.isRightH()) {
-        switch (_index) {
-            case 1:
-                ++currentChannel.hour;
-                //updateDisplay(lcd, state);
-                break;
-            case 2:
-                ++currentChannel.minute;   
-                break;
-            case 3:
-                ++currentChannel.day;
-                break;
-            case 4:
-                ++currentChannel.month;
-                break;
-            case 5:
-                ++_hours;
-                break;
-            case 6:
-                ++_minutes;
-                break;
-            case 7:
-                ++_seconds;
-                break;
-        } 
-   }
-   */ 
-  
+    if (_index != 0 && enc.isRightH()) {
+        switch (currentChannel.mode) {
+            case TIMER:
+                switch (_index) {
+                    case 1: // period hours
+                        currentChannel.data.timerMode.period += 60 * 3600 * 1000; // 1hour 
+                        break;
+                    case 2:
+                        currentChannel.data.timerMode.period += 60 * 1000; // 1 minute
+                        break;
+                    case 3:
+                        currentChannel.data.timerMode.period += 1000; // 1second
+                        break;
+                    
+                    case 4:
+                        currentChannel.data.timerMode.work += 60 * 3600 * 1000; // 1 hour - 60 minute - 3600 sec - 3600000 millis
+                        break;
+                    case 5:
+                        currentChannel.data.timerMode.work += 60 * 1000; // 1 min - 60 sec - 60 000 millis
+                        break;
+                }
 
-   /*
-   if (_index != 0 && enc.isLeftH()) {
-        switch (_index) {
-            case 1:
-                --currentChannel.hour;    
+                if (currentChannel.data.timerMode.period > 200 * 3600 * 1000) currentChannel.data.timerMode.period = 200 * 3600 * 1000; // 200 hours = +- 8 days
+                if (currentChannel.data.timerMode.work > 7 * 24 * 3600 * 1000) currentChannel.data.timerMode.work = 7 * 24 * 3600 * 1000; // 7 days
+                _settingsChanged = 1;    
+                
                 break;
-            case 2:
-                --currentChannel.minute;
-                break;
-            case 3:
-                --currentChannel.day;
-                break;
-            case 4:
-                --currentChannel.month;
-                break;
-            case 5:
-                --_hours;
-                break;
-            case 6:
-            --_minutes;
-                break;
-            case 7:
-                --_seconds;
-                break;
-        }
-    */
+            
+            case DAY: // _oneByte as flags for changed sets 
+                switch (_index) {
+                    case 1:
+                        if (currentChannel.data.dayMode.startHour != 23) {
+                        ++currentChannel.data.dayMode.startHour;
+                        _oneByte |= 1 << 0 ;} // 0b01 
+                        //0th bit for startHour
 
-   
+                        else currentChannel.data.dayMode.startHour = 23; // 0th hour
+                        break;
+                    case 2:
+                        if (currentChannel.data.dayMode.startMinute >= 59 && currentChannel.data.dayMode.startHour != 23) {
+                        currentChannel.data.dayMode.startMinute = 0;
+                        ++currentChannel.data.dayMode.startHour; 
+                        _oneByte |= (1 << 0) | (1 << 1) ;} // 1th bit for startMinute
+                        
+
+                        else if (currentChannel.data.dayMode.startMinute < 59) {
+                        ++currentChannel.data.dayMode.startMinute;
+                        _oneByte |= 1 << 1;
+                        }
+                        
+                        break;
+                    case 3:
+                        if (currentChannel.data.dayMode.startSecond >= 59 && currentChannel.data.dayMode.startHour != 23 && currentChannel.data.dayMode.startMinute < 59) {
+                            currentChannel.data.dayMode.startSecond = 0;
+                            ++currentChannel.data.dayMode.startMinute;
+                            _oneByte |= (1 << 2) | (1 << 1); // 2th bit for startSecond
+                        } 
+
+                        else if (currentChannel.data.dayMode.startSecond < 59) {++currentChannel.data.dayMode.startSecond; _oneByte |= 1 << 2; }
+                        else currentChannel.data.dayMode.startSecond = 59;
+
+                        break;
+                    case 4:
+                        if (currentChannel.data.dayMode.endHour != 23) {
+                        ++currentChannel.data.dayMode.endHour;
+                        _oneByte |= 1 << 3; }// 3th bit for endHour 
+                        
+                        else currentChannel.data.dayMode.endHour = 23;
+                        break;
+                    case 5:
+                        if (currentChannel.data.dayMode.endMinute >= 59 && currentChannel.data.dayMode.endHour != 23) {
+                            currentChannel.data.dayMode.endMinute = 0;
+                            ++currentChannel.data.dayMode.endHour; 
+                            _oneByte |= (1 << 3) | (1 << 4); // 4th bit for endMinute
+                        }
+
+                        else if (currentChannel.data.dayMode.endMinute < 59) {++currentChannel.data.dayMode.endMinute; _oneByte |= 1 << 4; }
+                        
+                        break;
+                    case 6:
+                        if (currentChannel.data.dayMode.endSecond >= 59 && currentChannel.data.dayMode.endHour != 23 && currentChannel.data.dayMode.endMinute < 59) {
+                                currentChannel.data.dayMode.endSecond = 0;
+                                ++currentChannel.data.dayMode.endMinute;
+                                _oneByte |= (1 << 4) | (1 << 5); // 5th bit for endSecond
+                        }
+                        else if (currentChannel.data.dayMode.endSecond < 59) {++currentChannel.data.dayMode.endSecond; _oneByte |= 1 << 5; }
+                        else currentChannel.data.dayMode.endSecond = 0;
+
+                        break;
+                }
+
+                _settingsChanged = 1;
+                break;
+            
+            case SENSOR:
+                switch (_index) {
+                    case 1:
+                        ++currentChannel.data.sensorMode.threshold;
+                        break;
+                    case 2:
+                        currentChannel.data.sensorMode.work += 60 * 1000; // 1 minute
+                        break;
+                    case 3:
+                        currentChannel.data.sensorMode.work += 1000; // 1second
+                        break;
+
+                }
+
+		if (currentChannel.data.sensorMode.threshold > 1023) currentChannel.data.sensorMode.threshold = 0;
+		if (currentChannel.data.sensorMode.work > 200 * 60 * 60 * 1000) currentChannel.data.sensorMode.threshold = 200 * 60 * 60 * 1000;
+		_settingsChanged = 1;	
+                break;
+            
+            case RTC:
+                switch (_index) {
+                    // pass
+                }
+                break;
+       }
+    }
+        
+    if (_index != 0 && enc.isLeftH()) {
+        switch (currentChannel.mode) {
+            case TIMER:
+                switch (_index) {
+                    case 1: // period hours
+                        currentChannel.data.timerMode.period -= 60 * 3600 * 1000; // 1 hour
+                        break;
+                    case 2:
+                        currentChannel.data.timerMode.period -= 60 * 1000; // 1 minute
+                        break;
+                    case 3:
+                        currentChannel.data.timerMode.period -= 1000; // seconds
+                        break;
+                    
+                    case 4:
+                        currentChannel.data.timerMode.work -= 60 * 3600 * 1000; // 1 hour - 60 minute - 3600 sec - 3600000 millis
+                        break;
+                    case 5:
+                        currentChannel.data.timerMode.work -= 60 * 1000; // 1 min - 60 sec - 60 000 millis
+                        break;
+                }
+
+                if (currentChannel.data.timerMode.period < 0) currentChannel.data.timerMode.period = 0;
+                if (currentChannel.data.timerMode.work < 0) currentChannel.data.timerMode.work = 0;
+                _settingsChanged = 1;
+                break;
+            
+            case DAY: // _oneByte as flags for changed sets
+                switch (_index) {
+                    case 1:
+                        if (currentChannel.data.dayMode.startHour > 0) {
+                        --currentChannel.data.dayMode.startHour;
+                        _oneByte |= 1 << 0; //0th bit for startHour
+                        }
+
+                        else currentChannel.data.dayMode.startHour = 0;
+                        break;
+                    case 2:
+                        if (currentChannel.data.dayMode.startMinute > 0) {
+                        --currentChannel.data.dayMode.startMinute;
+                        _oneByte |= 1 << 1; // 1th bit for startMinute
+                        }
+                        else currentChannel.data.dayMode.startMinute = 0; 
+                        break;
+                    case 3:
+                        if (currentChannel.data.dayMode.startSecond > 0) {
+                        --currentChannel.data.dayMode.startSecond;
+                        _oneByte |= 1 << 2; // 2th bit for startSecond
+                        }
+                        else currentChannel.data.dayMode.startSecond = 0;
+                        break;
+                    case 4:
+                        if (currentChannel.data.dayMode.endHour > 0) {
+                        --currentChannel.data.dayMode.endHour;
+                        _oneByte |= 1 << 3; // 3th bit for endHour
+                        }
+                        else currentChannel.data.dayMode.endHour = 0;
+                        break;
+                    case 5:
+                        if (currentChannel.data.dayMode.endMinute > 0) {
+                        --currentChannel.data.dayMode.endMinute;
+                        _oneByte |= 1 << 4; // 4th bit for endMinute
+                        }
+                        else currentChannel.data.dayMode.endMinute = 0;
+                        break;
+                    case 6:
+                        if (currentChannel.data.dayMode.endSecond > 0) {
+                        --currentChannel.data.dayMode.endSecond;
+                        _oneByte |= 1 << 5; // 5th bit for endSecond
+                        }
+                        else currentChannel.data.dayMode.endSecond = 0;
+                        break;
+                }
+
+
+                _settingsChanged = 1;
+
+                break;
+            
+            case SENSOR:
+                switch (_index) {
+                    case 1:
+                        --currentChannel.data.sensorMode.threshold;
+                        break;
+                    case 2:
+                        currentChannel.data.sensorMode.work -= 60 * 1000; // 1 minute
+                        break;
+                    case 3:
+                        currentChannel.data.sensorMode.work -= 1000; // 1second
+                        break;
+                }
+                if (currentChannel.data.sensorMode.threshold < 0) currentChannel.data.sensorMode.threshold = 0;
+                if (currentChannel.data.sensorMode.work < 0) currentChannel.data.sensorMode.work = 0;
+                _settingsChanged = 1;
+                break;
+            
+            case RTC:
+                switch (_index) {
+                    // pass
+                }
+                break;
+       }
+    }
 
 
    if (_index == 0 && enc.isClick()) {
     state = CHANNELS;
+    _index = 2;
+    _inChannelFlag = 1;
     lcd.clear();
     _first = 1;
+
+    // saving channel settings
+    putChannel(_count, currentChannel);
    }
 
 
@@ -443,7 +645,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
         switch (state) {
             case MAIN_MENU:
                 #if LOG
-                Serial.println("Drawing MAIN_MENU _first = 1");
+                Serial.println(F("Draw MAIN_MENU"));
                 #endif
         
                 /*  Service
@@ -461,7 +663,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                 break;
             case CHANNELS:
                 #if LOG
-                Serial.println("Drawing CHANNELS _first = 1");
+                Serial.println(F("Drawing CHANNELS _first = 1"));
                 #endif
 
                 if (_count < 1) _count = 1;
@@ -481,7 +683,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                 if (_newReadFlag) {
                 currentChannel = {getChannel(_count)};
                 #if LOG
-                Serial.println("Channel fetched from EEPROM");
+                Serial.println(F("new Channel"));
                 #endif
                 }
                 #if TEST
@@ -565,6 +767,12 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         
                         lcd.setCursor(0, 3);
                         lcd.print("Left: 00h 00m 00s");
+
+                        // init the modes data
+                        currentChannel.data.timerMode.period = 0;
+                        currentChannel.data.timerMode.timer = 0;
+                        currentChannel.data.timerMode.work = 0;
+
                         break;
                     case RTC:
                         lcd.setCursor(0, 0);
@@ -597,6 +805,15 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         lcd.setCursor(0, 3);
                         lcd.print("Left: 00:00.00s");
 
+                        currentChannel.data.dayMode.timer = 0;
+                        currentChannel.data.dayMode.startHour = 0;
+                        currentChannel.data.dayMode.startMinute = 0;
+                        currentChannel.data.dayMode.startSecond = 0;
+
+                        currentChannel.data.dayMode.endHour = 0;
+                        currentChannel.data.dayMode.endMinute = 0;
+                        currentChannel.data.dayMode.endSecond = 0;
+
                         break;
                     
                     case SENSOR:
@@ -606,7 +823,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         lcd.print(">Back");
 
                         lcd.setCursor(0, 1);
-                        lcd.print("Treshold: 1023");
+                        lcd.print("Threshold: 1023");
 
                         lcd.setCursor(0, 2);
                         lcd.print("Work: 00m 00s");
@@ -617,6 +834,10 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         lcd.print()
                         int sensorValue = analogRead(currentChannel.pin);
                         */
+
+                        currentChannel.data.sensorMode.work = 0;
+                        currentChannel.data.sensorMode.threshold = 1023;
+
                        break;
                 }
             break;
@@ -725,7 +946,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         break;
                     
                     #if LOG
-                    Serial.println("Removing old arrow");
+                    Serial.println(F("Removing old arrow"));
                     #endif
                         }
                 
@@ -788,7 +1009,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         break;
                     
                     #if LOG
-                    Serial.println("Drawing new arrow");
+                    Serial.println(F("Drawing new arrow"));
                     #endif
                 // ====================================== ARROW TRACKING END ===========================
                 }
@@ -912,7 +1133,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                                 lcd.setCursor(15, 0);
                                 break;
                             case 1:
-                                lcd.setCursor(9, 1);
+                                lcd.setCursor(10, 1);
                                 break;
                             case 2:
                                 lcd.setCursor(5, 2);
@@ -928,7 +1149,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                                 lcd.setCursor(15, 0);
                                 break;
                             case 1:
-                                lcd.setCursor(9, 1);
+                                lcd.setCursor(10, 1);
                                 break;
                             case 2:
                                 lcd.setCursor(5, 2);
@@ -950,9 +1171,78 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                 }
 
 
+            }
+	_changedFlag = 0;
 
-            } _changedFlag = 0;
-        break;
+	if (_settingsChanged) {
+		switch (currentChannel.mode) {
+
+		case TIMER:
+
+
+			break;
+
+		case DAY:
+
+            if (_oneByte & (1 << 0))  {
+			    lcd.setCursor(7, 1);
+			    lcd.print("  ");
+
+                print2digits(currentChannel.data.dayMode.startHour, lcd, 7, 1);
+                _oneByte &= 254;
+            }
+
+            if (_oneByte & (1 << 1)) {
+			    lcd.setCursor(10, 1);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.startMinute, lcd, 10, 1);
+                _oneByte &= 253;
+            }
+
+            if (_oneByte & (1 << 2)) {
+			    lcd.setCursor(13, 1);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.startSecond, lcd, 13, 1);
+                _oneByte &= 251;
+            }
+
+            if (_oneByte & (1 << 3)) {
+			    lcd.setCursor(5, 2);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.endHour, lcd, 5, 2);
+                _oneByte &= 247;
+            }
+
+            if (_oneByte & (1 << 4)) {
+			    lcd.setCursor(8, 2);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.endMinute, lcd, 8, 2);
+                _oneByte &= 239;
+            }
+
+            if (_oneByte & (1 << 5)) {
+			    lcd.setCursor(11, 2);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.endSecond, lcd, 11, 2);
+                _oneByte &= 223;
+            }
+
+			break;
+
+		case SENSOR:
+			break;
+
+		case RTC:
+			break;
+		
+		}		
+	_settingsChanged = 0;
+	}
+       break;
     }
-        
 }
