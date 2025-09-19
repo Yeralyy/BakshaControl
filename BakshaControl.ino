@@ -141,9 +141,11 @@ void setup() {
 
 void loop() {
 
+  /*
   #if LOG
   Serial.println(state);
   #endif
+  */
 
   enc.tick(); // encoder handler
   RtcDateTime now = rtc.GetDateTime();

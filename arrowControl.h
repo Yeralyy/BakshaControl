@@ -359,7 +359,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
         }
 
 
-void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) {
+void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) { // modesfunc
     redrawDisplay(lcd, state);
     if (enc.isRight()) {
         _indexFlag = _index;
@@ -397,6 +397,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
     if (_index != 0 && enc.isRightH()) {
         switch (currentChannel.mode) {
             case TIMER:
+                /*
                 switch (_index) {
                     case 1: // period hours
                         currentChannel.data.timerMode.period += 60 * 3600 * 1000; // 1hour 
@@ -419,47 +420,56 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                 if (currentChannel.data.timerMode.period > 200 * 3600 * 1000) currentChannel.data.timerMode.period = 200 * 3600 * 1000; // 200 hours = +- 8 days
                 if (currentChannel.data.timerMode.work > 7 * 24 * 3600 * 1000) currentChannel.data.timerMode.work = 7 * 24 * 3600 * 1000; // 7 days
                 _settingsChanged = 1;    
+                */
                 
                 break;
             
             case DAY: // _oneByte as flags for changed sets 
                 switch (_index) {
                     case 1:
-                        if (currentChannel.data.dayMode.startHour != 23) {
-                        ++currentChannel.data.dayMode.startHour;
+                        if (currentChannel.data.dayMode.startHour < 23) {
+                        if (enc.isFast()) currentChannel.data.dayMode.startHour += 3;
+                        else ++currentChannel.data.dayMode.startHour;
                         _oneByte |= 1 << 0 ;} // 0b01 
                         //0th bit for startHour
 
                         else currentChannel.data.dayMode.startHour = 23; // 0th hour
                         break;
                     case 2:
-                        if (currentChannel.data.dayMode.startMinute >= 59 && currentChannel.data.dayMode.startHour != 23) {
+                        if (currentChannel.data.dayMode.startMinute >= 59 && currentChannel.data.dayMode.startHour < 23) {
                         currentChannel.data.dayMode.startMinute = 0;
                         ++currentChannel.data.dayMode.startHour; 
                         _oneByte |= (1 << 0) | (1 << 1) ;} // 1th bit for startMinute
                         
 
                         else if (currentChannel.data.dayMode.startMinute < 59) {
-                        ++currentChannel.data.dayMode.startMinute;
+                        
+                        if (enc.isFast()) currentChannel.data.dayMode.startMinute += 5;
+                        else ++currentChannel.data.dayMode.startMinute;
                         _oneByte |= 1 << 1;
-                        }
+                        } else currentChannel.data.dayMode.startMinute = 59;
                         
                         break;
                     case 3:
-                        if (currentChannel.data.dayMode.startSecond >= 59 && currentChannel.data.dayMode.startHour != 23 && currentChannel.data.dayMode.startMinute < 59) {
+                        if (currentChannel.data.dayMode.startSecond >= 59 && currentChannel.data.dayMode.startHour < 23 && currentChannel.data.dayMode.startMinute < 59) {
                             currentChannel.data.dayMode.startSecond = 0;
                             ++currentChannel.data.dayMode.startMinute;
                             _oneByte |= (1 << 2) | (1 << 1); // 2th bit for startSecond
                         } 
 
-                        else if (currentChannel.data.dayMode.startSecond < 59) {++currentChannel.data.dayMode.startSecond; _oneByte |= 1 << 2; }
+                        else if (currentChannel.data.dayMode.startSecond < 59) {
+                            if (enc.isFast()) currentChannel.data.dayMode.startSecond += 5;
+                            else ++currentChannel.data.dayMode.startSecond; 
+                            _oneByte |= 1 << 2; 
+                        }
                         else currentChannel.data.dayMode.startSecond = 59;
 
                         break;
                     case 4:
-                        if (currentChannel.data.dayMode.endHour != 23) {
-                        ++currentChannel.data.dayMode.endHour;
-                        _oneByte |= 1 << 3; }// 3th bit for endHour 
+                        if (currentChannel.data.dayMode.endHour < 23) {
+                            if (enc.isFast()) currentChannel.data.dayMode.endHour += 3;
+                            else ++currentChannel.data.dayMode.endHour;
+                            _oneByte |= 1 << 3; }// 3th bit for endHour 
                         
                         else currentChannel.data.dayMode.endHour = 23;
                         break;
@@ -470,7 +480,11 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                             _oneByte |= (1 << 3) | (1 << 4); // 4th bit for endMinute
                         }
 
-                        else if (currentChannel.data.dayMode.endMinute < 59) {++currentChannel.data.dayMode.endMinute; _oneByte |= 1 << 4; }
+                        else if (currentChannel.data.dayMode.endMinute < 59) {
+                            if (enc.isFast()) currentChannel.data.dayMode.endMinute += 5;
+                            else ++currentChannel.data.dayMode.endMinute; 
+                            _oneByte |= 1 << 4; 
+                        }
                         
                         break;
                     case 6:
@@ -479,7 +493,11 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                                 ++currentChannel.data.dayMode.endMinute;
                                 _oneByte |= (1 << 4) | (1 << 5); // 5th bit for endSecond
                         }
-                        else if (currentChannel.data.dayMode.endSecond < 59) {++currentChannel.data.dayMode.endSecond; _oneByte |= 1 << 5; }
+                        else if (currentChannel.data.dayMode.endSecond < 59) {
+                            if (enc.isFast()) currentChannel.data.dayMode.endSecond += 5;
+                            else ++currentChannel.data.dayMode.endSecond; 
+                            _oneByte |= 1 << 5; 
+                        }
                         else currentChannel.data.dayMode.endSecond = 0;
 
                         break;
@@ -491,20 +509,38 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
             case SENSOR:
                 switch (_index) {
                     case 1:
-                        ++currentChannel.data.sensorMode.threshold;
+                        if (currentChannel.data.sensorMode.threshold < 1023) {
+                            if (enc.isFast() && currentChannel.data.sensorMode.threshold + 50 < 1023) currentChannel.data.sensorMode.threshold += 50;
+                            else ++currentChannel.data.sensorMode.threshold;
+                            _oneByte |= 1 << 0;
+                        } else currentChannel.data.sensorMode.threshold = 1023;
                         break;
                     case 2:
-                        currentChannel.data.sensorMode.work += 60 * 1000; // 1 minute
+                        if (currentChannel.data.sensorMode.workMinute < 99) {
+                            if (enc.isFast() && currentChannel.data.sensorMode.workMinute + 5 < 99) currentChannel.data.sensorMode.workMinute += 5;
+                            else ++currentChannel.data.sensorMode.workMinute;
+                            _oneByte |= 1 << 1;
+                        } else currentChannel.data.sensorMode.workMinute = 99;
                         break;
                     case 3:
-                        currentChannel.data.sensorMode.work += 1000; // 1second
+                        if (currentChannel.data.sensorMode.workSecond >= 59 && currentChannel.data.sensorMode.workMinute < 99) {
+                            currentChannel.data.sensorMode.workSecond = 0;
+                            ++currentChannel.data.sensorMode.workMinute;
+                            _oneByte |= 1 << 2; // 2th bit forworkMinute
+                            _oneByte |= 1 << 1;
+                            break;
+                        } 
+                        if (currentChannel.data.sensorMode.workSecond < 59) {
+                            if (enc.isFast() && currentChannel.data.sensorMode.workSecond + 5 < 59) currentChannel.data.sensorMode.workSecond += 5;
+                            else ++currentChannel.data.sensorMode.workSecond;
+                            _oneByte |= 1 << 2;
+                        } else currentChannel.data.sensorMode.workSecond = 59;
+
                         break;
 
                 }
 
-		if (currentChannel.data.sensorMode.threshold > 1023) currentChannel.data.sensorMode.threshold = 0;
-		if (currentChannel.data.sensorMode.work > 200 * 60 * 60 * 1000) currentChannel.data.sensorMode.threshold = 200 * 60 * 60 * 1000;
-		_settingsChanged = 1;	
+		        _settingsChanged = 1;	
                 break;
             
             case RTC:
@@ -518,6 +554,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
     if (_index != 0 && enc.isLeftH()) {
         switch (currentChannel.mode) {
             case TIMER:
+                /*
                 switch (_index) {
                     case 1: // period hours
                         currentChannel.data.timerMode.period -= 60 * 3600 * 1000; // 1 hour
@@ -540,50 +577,57 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                 if (currentChannel.data.timerMode.period < 0) currentChannel.data.timerMode.period = 0;
                 if (currentChannel.data.timerMode.work < 0) currentChannel.data.timerMode.work = 0;
                 _settingsChanged = 1;
+                */
                 break;
             
             case DAY: // _oneByte as flags for changed sets
                 switch (_index) {
                     case 1:
                         if (currentChannel.data.dayMode.startHour > 0) {
-                        --currentChannel.data.dayMode.startHour;
-                        _oneByte |= 1 << 0; //0th bit for startHour
+                            if (enc.isFast() && currentChannel.data.dayMode.startHour - 3 > 0) currentChannel.data.dayMode.startHour -= 3;
+                            else --currentChannel.data.dayMode.startHour;
+                            _oneByte |= 1 << 0; //0th bit for startHour
                         }
 
                         else currentChannel.data.dayMode.startHour = 0;
                         break;
                     case 2:
                         if (currentChannel.data.dayMode.startMinute > 0) {
-                        --currentChannel.data.dayMode.startMinute;
-                        _oneByte |= 1 << 1; // 1th bit for startMinute
+                            if (enc.isFast() && currentChannel.data.dayMode.startMinute - 5 > 0) currentChannel.data.dayMode.startMinute -= 5;
+                            else --currentChannel.data.dayMode.startMinute;
+                            _oneByte |= 1 << 1; // 1th bit for startMinute
                         }
                         else currentChannel.data.dayMode.startMinute = 0; 
                         break;
                     case 3:
                         if (currentChannel.data.dayMode.startSecond > 0) {
-                        --currentChannel.data.dayMode.startSecond;
-                        _oneByte |= 1 << 2; // 2th bit for startSecond
+                             if (enc.isFast() && currentChannel.data.dayMode.startSecond - 5 > 0) currentChannel.data.dayMode.startSecond -= 5;
+                            else --currentChannel.data.dayMode.startSecond;
+                            _oneByte |= 1 << 2; // 2th bit for startSecond
                         }
                         else currentChannel.data.dayMode.startSecond = 0;
                         break;
                     case 4:
                         if (currentChannel.data.dayMode.endHour > 0) {
-                        --currentChannel.data.dayMode.endHour;
-                        _oneByte |= 1 << 3; // 3th bit for endHour
+                            if (enc.isFast() && currentChannel.data.dayMode.endHour - 3 > 0) currentChannel.data.dayMode.endHour -= 3;
+                            else --currentChannel.data.dayMode.endHour;
+                            _oneByte |= 1 << 3; // 3th bit for endHour
                         }
                         else currentChannel.data.dayMode.endHour = 0;
                         break;
                     case 5:
                         if (currentChannel.data.dayMode.endMinute > 0) {
-                        --currentChannel.data.dayMode.endMinute;
-                        _oneByte |= 1 << 4; // 4th bit for endMinute
+                            if (enc.isFast() && currentChannel.data.dayMode.endMinute - 5 > 0) currentChannel.data.dayMode.endMinute -= 5;
+                            else --currentChannel.data.dayMode.endMinute;
+                            _oneByte |= 1 << 4; // 4th bit for endMinute
                         }
                         else currentChannel.data.dayMode.endMinute = 0;
                         break;
                     case 6:
                         if (currentChannel.data.dayMode.endSecond > 0) {
-                        --currentChannel.data.dayMode.endSecond;
-                        _oneByte |= 1 << 5; // 5th bit for endSecond
+                            if (enc.isFast() && currentChannel.data.dayMode.endSecond - 5 > 0) currentChannel.data.dayMode.endSecond -= 5;
+                            else --currentChannel.data.dayMode.endSecond;
+                            _oneByte |= 1 << 5; // 5th bit for endSecond
                         }
                         else currentChannel.data.dayMode.endSecond = 0;
                         break;
@@ -597,17 +641,27 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
             case SENSOR:
                 switch (_index) {
                     case 1:
-                        --currentChannel.data.sensorMode.threshold;
+                        if (currentChannel.data.sensorMode.threshold > 0) {
+                            if (enc.isFast() && currentChannel.data.sensorMode.threshold - 50 > 0) currentChannel.data.sensorMode.threshold -= 50;
+                            else --currentChannel.data.sensorMode.threshold;
+                        } else currentChannel.data.sensorMode.threshold = 0; 
+                        _oneByte |= 1 << 0; // 0th bit for threshold
                         break;
                     case 2:
-                        currentChannel.data.sensorMode.work -= 60 * 1000; // 1 minute
+                        if (currentChannel.data.sensorMode.workMinute > 0) {
+                            if (enc.isFast() && currentChannel.data.sensorMode.threshold - 5 > 0) currentChannel.data.sensorMode.workMinute -= 5;
+                            else --currentChannel.data.sensorMode.workMinute;
+                        } else currentChannel.data.sensorMode.workMinute = 0;
+                        _oneByte |= 1 << 1; // 1th bit for threshold
                         break;
                     case 3:
-                        currentChannel.data.sensorMode.work -= 1000; // 1second
+                        if (currentChannel.data.sensorMode.workSecond > 0) {
+                            if (enc.isFast() && currentChannel.data.sensorMode.workSecond - 5 > 0) currentChannel.data.sensorMode.workSecond -= 5;
+                            else --currentChannel.data.sensorMode.workSecond;
+                        } else currentChannel.data.sensorMode.workSecond = 0;
+                        _oneByte |= 1 << 2; // 2th bit for threshold
                         break;
                 }
-                if (currentChannel.data.sensorMode.threshold < 0) currentChannel.data.sensorMode.threshold = 0;
-                if (currentChannel.data.sensorMode.work < 0) currentChannel.data.sensorMode.work = 0;
                 _settingsChanged = 1;
                 break;
             
@@ -626,6 +680,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
     _inChannelFlag = 1;
     lcd.clear();
     _first = 1;
+    _oneByte = 0;
 
     // saving channel settings
     putChannel(_count, currentChannel);
@@ -640,7 +695,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
 
 
 
-void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
+void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redrawfunc
     if (_first) {
         switch (state) {
             case MAIN_MENU:
@@ -769,9 +824,10 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         lcd.print("Left: 00h 00m 00s");
 
                         // init the modes data
-                        currentChannel.data.timerMode.period = 0;
                         currentChannel.data.timerMode.timer = 0;
-                        currentChannel.data.timerMode.work = 0;
+                        currentChannel.data.sensorMode.timer = 0; 
+                        currentChannel.data.dayMode.timer = 0;
+                        
 
                         break;
                     case RTC:
@@ -835,7 +891,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
                         int sensorValue = analogRead(currentChannel.pin);
                         */
 
-                        currentChannel.data.sensorMode.work = 0;
                         currentChannel.data.sensorMode.threshold = 1023;
 
                        break;
@@ -847,7 +902,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
     }
 }
 
-void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
+void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // updatefunc
 
     switch (state) {
         case MAIN_MENU:
@@ -1235,6 +1290,32 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) {
 			break;
 
 		case SENSOR:
+            if (_oneByte & (1 << 0)) {
+                lcd.setCursor(11, 1);
+                lcd.print("         ");
+
+                lcd.setCursor(11, 1);
+                lcd.print(currentChannel.data.sensorMode.threshold);
+            
+                _oneByte &= 254;
+            }
+
+            if (_oneByte & (1 << 1)) {
+                lcd.setCursor(6, 2);
+                lcd.print("  ");
+
+                print2digits(currentChannel.data.sensorMode.workMinute, lcd, 6, 2);
+                _oneByte &= 253;
+            }
+
+            if (_oneByte & (1 << 2)) {
+                lcd.setCursor(10, 2);
+                lcd.print("  ");
+
+                print2digits(currentChannel.data.sensorMode.workSecond, lcd, 10, 2);
+                _oneByte &= 251;
+            }
+
 			break;
 
 		case RTC:

@@ -14,36 +14,28 @@
 #define CHANNELS_SIZE 104
 
 
-/*
-struct Channel {
-    
-    uint32_t timer {}; // in milliseconds 4 bytes
-    uint32_t work {}; // work time in milliseconds 4 bytes
-    int threshold {1023}; // 2 bytes
-    uint8_t month {}; // 1 byte
-    uint8_t day {}; // 1 byte
-    uint8_t hour {}; // 1 byte
-    uint8_t minute {}; // 1 byte
-    Mode mode {OFF}; // default.  1 byte
-    
-    
-};
-*/
-
 struct Channel {
     union {
-        // you can notice that all timer variables is in32_t and not uint32_t. So in future if you want to compare these variables with milli() which is uin32_t you should explicitly convert in32_t to uint32_t, undefined behavier otherwise
+        // you can notice that all timer variables is int32_t and not uint32_t. So in future if you want to compare these variables with milli() which is uin32_t you should explicitly convert in32_t to uint32_t, undefined behavier otherwise
         struct {
-            int32_t period; 
-            int32_t timer;
-            int32_t work;
-            // 4 + 4 + 4 = 12 bytes
+            uint32_t timer;
+
+            uint8_t periodHour;
+            uint8_t periodMinute;
+            uint8_t periodSecond;
+
+            uint8_t workMinute;
+            uint8_t workSecond;
+            // 5 + 4 = 9 bytes
         } timerMode;
 
         struct {
-            int32_t work;
+            int32_t timer;
             int threshold;
-            // 4 + 2 = 6 bytes
+
+            uint8_t workMinute;
+            uint8_t workSecond;
+            // 4 + 2 + 2 = 8bytes
         } sensorMode;
 
         struct {
@@ -66,14 +58,14 @@ struct Channel {
             // empty for now
             uint32_t timer;
         } rtcMode;
-    } data; // 12 bytes
+    } data; // 10 bytes
 
     Mode mode {OFF}; // 1 byte
-}; // 13 bytes
+}; // 11 bytes
 
 
 struct Channels {
-    Channel channel[CHANNELS_COUNT]; // 13 * 8 =   104 bytes 
+    Channel channel[CHANNELS_COUNT]; // 11 * 8 =   88 bytes 
 };
 
 
