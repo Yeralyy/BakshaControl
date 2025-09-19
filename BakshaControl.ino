@@ -1,3 +1,9 @@
+/*
+BakshaControl - garden, plant, greenhouse control system.
+Author: @Yeralyy
+
+Credits: Thanks to all libraries authors which i used in this project
+*/
 #include "CONFIG.h"
 #include "states.h"
 #include "lib/encMinim.h"
