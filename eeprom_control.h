@@ -75,6 +75,7 @@ void updateChannels(Channels& channels);
 Channel getChannel(int8_t n);
 void putChannel(int8_t n, Channel& channel);
 bool isFirstRun(void);
+void resetEEPROM(void);
 
 
 
@@ -91,15 +92,18 @@ void initEEPROM(void) {
     Channels channels;
 
     #if LOG
-    Serial.print(F("Chls size: "));
+    Serial.println(F("Chls size: "));
     Serial.print(sizeof(Channels));
 
-    Serial.println();
-    Serial.print(F("Channel struct size: "));
+    Serial.println(F("Channel struct size: "));
     Serial.print(sizeof(Channel));
     #endif
 
-    EEPROM.put(CHANNELS_ADDRESS, channels);
+    for (int i; i < 8; ++i) {
+        putChannel(i, channels.channel[i]);
+        delay(10);
+    }
+
     #if LOG
     Serial.println(F("EEPROM initilized"));
     #endif
@@ -108,7 +112,7 @@ void initEEPROM(void) {
 }
 
 void factoryReset(void) {
-    for (int8_t i = 1; i <= 8; i++) {
+    for (int8_t i = 0; i < 8; i++) {
         Channel channel {};
         putChannel(i, channel);
     }
@@ -123,13 +127,23 @@ void updateChannels(Channels& channels) {
 }
 
 Channel getChannel(int8_t n) { // return get N'th struct in Channels
-    if (n > 0 && n <= CHANNELS_COUNT) {
+    if (n >= 0 && n <= CHANNELS_COUNT) {
         Channel channel;
-        EEPROM.get(CHANNELS_ADDRESS + n * sizeof(Channel), channel);
+        EEPROM.get(CHANNELS_ADDRESS + (n-1) * sizeof(Channel), channel);
         return channel;
     } 
 }
 
 void putChannel(int8_t n, Channel& channel) { // put N'th struct in Channels
-    if (n > 0 && n <= CHANNELS_COUNT) EEPROM.put(CHANNELS_ADDRESS + n * sizeof(Channel), channel);
+    if (n >= 0 && n <= CHANNELS_COUNT) EEPROM.put(CHANNELS_ADDRESS + (n - 1) * sizeof(Channel), channel);
+}
+
+void resetEEPROM(void) {
+    #if LOG
+    Serial.println(F("Factory reset of EEPROM"));
+    #endif
+    for (int i; i < 1024; ++i) {
+        EEPROM.update(i, 255);
+        delay(10);
+    }
 }

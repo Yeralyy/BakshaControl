@@ -46,6 +46,11 @@ void setup() {
   #if LOG
   Serial.begin(115200);
   #endif
+
+  #if RESET_EEPROM
+  resetEEPROM();
+  #endif
+
   lcd.init(); // display
   lcd.backlight();
 
