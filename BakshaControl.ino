@@ -50,7 +50,7 @@ uint32_t time_tmr {0};
 
 void setup() {
   #if LOG
-  Serial.begin(115200);
+  Serial.begin(9600);
   #endif
 
   #if RESET_EEPROM

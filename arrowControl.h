@@ -24,19 +24,18 @@ class ArrowControl {
         int8_t _indexFlag;
 
         // for modes preferenes
-        uint8_t _minutes {0};
-        uint8_t _hours {0};
-        uint8_t _seconds {0};
         bool _changedFlag {0}; bool _first {1};
         bool _inChannelFlag {0};
         bool _newReadFlag {1}; // Flag for EEPROM read
         bool _channelFlag {0};
 	    bool _settingsChanged {0};
+        bool _modesFlag = {0};
         uint8_t _oneByte {0};
+        Mode _lastMode;
 
         void redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
-        void constrainModes();
+        void constrainModes(void);
 };
 
 
@@ -148,6 +147,36 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 _first = 1;
                 _inChannelFlag = 0;
                 _index = 0;
+                if (_modesFlag && _lastMode != currentChannel.mode) {
+                    switch (currentChannel.mode) {
+                        case TIMER:
+                            currentChannel.data.timerMode.timer = 0;
+                            currentChannel.data.timerMode.periodHour = 0;
+                            currentChannel.data.timerMode.periodMinute = 0;
+                            currentChannel.data.timerMode.periodSecond = 0;
+
+                            currentChannel.data.timerMode.workMinute = 0;
+                            currentChannel.data.timerMode.workSecond = 0;
+                            break;
+
+                        case SENSOR:
+                            currentChannel.data.sensorMode.timer = 0;
+                            currentChannel.data.sensorMode.threshold = 1023;
+                            currentChannel.data.sensorMode.workMinute = 0;
+                            currentChannel.data.sensorMode.workSecond = 0;
+                            break;
+
+                        case DAY:
+                            currentChannel.data.dayMode.timer = 0;
+                            currentChannel.data.dayMode.startHour = 0;
+                            currentChannel.data.dayMode.startMinute = 0;
+                            currentChannel.data.dayMode.startSecond = 0;
+                            currentChannel.data.dayMode.endHour = 0;
+                            currentChannel.data.dayMode.endMinute = 0;
+                            currentChannel.data.dayMode.endSecond = 0;
+                            break;
+                    }
+                }
             }
                 
             /* Detecting enc actions */
@@ -325,7 +354,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                             
                             case SENSOR:
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Sensor>");
+                                lcd.print("Mode: <Sensor>"); 
                                 break;
                             default:
                                 #if LOG
@@ -713,6 +742,8 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
     lcd.clear();
     _first = 1;
     _oneByte = 0;
+    _lastMode = currentChannel.mode;
+    _modesFlag = 1;
 
     // saving channel settings
     putChannel(_count, currentChannel);
@@ -846,26 +877,29 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.setCursor(15, 0);
                         lcd.print(">Back");
 
+
                         lcd.setCursor(0, 1);
-                        lcd.print("Period: 00h 00m 00s"); // period. e.g: every 5hours, every 5 mins
+                        lcd.print("Period: "); // period. e.g: every 5hours, every 5 mins
+                        //target
+                        print2digits(currentChannel.data.timerMode.periodHour, lcd, 8, 1);
+                        lcd.print("h ");
+                        print2digits(currentChannel.data.timerMode.periodMinute, lcd, 12, 1);
+                        lcd.print("m ");
+                        print2digits(currentChannel.data.timerMode.periodSecond, lcd, 16, 1);
+                        lcd.print('s');
+                        
 
                         lcd.setCursor(0, 2);
-                        lcd.print("Work: 00m 00s"); // work time 
+                        lcd.print("Work: "); // work time 
+                        print2digits(currentChannel.data.timerMode.workMinute, lcd, 6, 2);
+                        lcd.print("m ");
+                        print2digits(currentChannel.data.timerMode.workSecond, lcd, 10, 2);
+                        lcd.print('s');
                         
                         lcd.setCursor(0, 3);
                         lcd.print("Left: 00h 00m 00s");
-
-                        // init the modes data
-                        currentChannel.data.timerMode.timer = 0;
-                        currentChannel.data.timerMode.periodHour = 0;
-                        currentChannel.data.timerMode.periodMinute = 0;
-                        currentChannel.data.timerMode.periodSecond = 0;
-
-                        currentChannel.data.timerMode.workMinute = 0;
-                        currentChannel.data.timerMode.workSecond = 0;
-                        
-
                         break;
+
                     case RTC:
                         lcd.setCursor(0, 0);
                         lcd.print("<RTC>");
@@ -874,15 +908,14 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
 
                         lcd.setCursor(0, 1);
                         lcd.print("Start: 00:00.00");
-                        //lcd.print("00:00 00.00"); // hour:minute day:month
 
                         lcd.setCursor(0, 2);
                         lcd.print("End: 00:00.00s");
                         
                         lcd.setCursor(0, 3);
                         lcd.print("Left: 00:00.00s"); // hours:minutes.seconds
-
                         break;
+
                     case DAY:
                         lcd.setCursor(0, 0);
                         lcd.print("<Day>");
@@ -890,22 +923,25 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print(">Back");
 
                         lcd.setCursor(0, 1);
-                        lcd.print("Start: 00:00.00s");
+                        lcd.print("Start: ");
+                        print2digits(currentChannel.data.dayMode.startHour, lcd, 7, 1);
+                        lcd.print(':');
+                        print2digits(currentChannel.data.dayMode.startMinute, lcd, 10, 1);
+                        lcd.print('.');
+                        print2digits(currentChannel.data.dayMode.startSecond, lcd, 13, 1);
+                        lcd.print('s');
+
                         lcd.setCursor(0, 2);
-                        lcd.print("End: 00:00.00s");
+                        lcd.print("End: ");
+                        print2digits(currentChannel.data.dayMode.endHour, lcd, 5, 2);
+                        lcd.print(':');
+                        print2digits(currentChannel.data.dayMode.endMinute, lcd, 8, 2);
+                        lcd.print('.');
+                        print2digits(currentChannel.data.dayMode.endSecond, lcd, 11, 2);
+                        lcd.print('s');
 
                         lcd.setCursor(0, 3);
                         lcd.print("Left: 00:00.00s");
-
-                        currentChannel.data.dayMode.timer = 0;
-                        currentChannel.data.dayMode.startHour = 0;
-                        currentChannel.data.dayMode.startMinute = 0;
-                        currentChannel.data.dayMode.startSecond = 0;
-
-                        currentChannel.data.dayMode.endHour = 0;
-                        currentChannel.data.dayMode.endMinute = 0;
-                        currentChannel.data.dayMode.endSecond = 0;
-
                         break;
                     
                     case SENSOR:
@@ -915,10 +951,16 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print(">Back");
 
                         lcd.setCursor(0, 1);
-                        lcd.print("Threshold: 1023");
+                        lcd.print("Threshold: ");
+                        lcd.print(currentChannel.data.sensorMode.threshold);
 
                         lcd.setCursor(0, 2);
-                        lcd.print("Work: 00m 00s");
+                        lcd.print("Work: ");
+                        print2digits(currentChannel.data.sensorMode.workMinute, lcd, 6, 2);
+                        lcd.print('m');
+                        print2digits(currentChannel.data.sensorMode.workSecond, lcd, 10, 2);
+                        lcd.print('s');
+                        
 
                         /*
                         lcd.setCursor(0, 3);
@@ -926,12 +968,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print()
                         int sensorValue = analogRead(currentChannel.pin);
                         */
-
-                        currentChannel.data.sensorMode.threshold = 1023;
-                        currentChannel.data.sensorMode.timer = 0;
-                        currentChannel.data.sensorMode.workMinute = 0;
-                        currentChannel.data.sensorMode.workSecond = 0;
-
                        break;
                 }
             break;
