@@ -14,32 +14,31 @@
 #define CHANNELS_SIZE 104
 
 
+const uint8_t channelsPins[8] {3, 8, 9, 10, 11, 12, 13, 20}; // A6 - 20
+uint32_t timers[8] {0, 0, 0, 0, 0, 0, 0, 0};
+
 struct Channel {
     union {
         // you can notice that all timer variables is int32_t and not uint32_t. So in future if you want to compare these variables with milli() which is uin32_t you should explicitly convert in32_t to uint32_t, undefined behavier otherwise
         struct {
-            uint32_t timer;
-
             uint8_t periodHour;
             uint8_t periodMinute;
             uint8_t periodSecond;
 
             uint8_t workMinute;
             uint8_t workSecond;
-            // 5 + 4 = 9 bytes
+            //  5 bytes
         } timerMode;
 
         struct {
-            int32_t timer;
             int threshold;
 
             uint8_t workMinute;
             uint8_t workSecond;
-            // 4 + 2 + 2 = 8bytes
+            // 4bytes
         } sensorMode;
 
         struct {
-            uint32_t timer;
             // start
             uint8_t startHour;
             uint8_t startMinute;
@@ -50,22 +49,22 @@ struct Channel {
             uint8_t endMinute;
             uint8_t endSecond;
 
-            // 4 + 1 + 1 + 1 + 1 + 1 + 1 = 10 bytes
+            // 6 bytes
 
         } dayMode;
 
         struct {
             // empty for now
-            uint32_t timer;
+            //uint32_t timer;
         } rtcMode;
-    } data; // 10 bytes
+    } data; // 6  bytes
 
     Mode mode {OFF}; // 1 byte
-}; // 11 bytes
+}; // 7 bytes
 
 
 struct Channels {
-    Channel channel[CHANNELS_COUNT]; // 11 * 8 =   88 bytes 
+    Channel channel[CHANNELS_COUNT]; // 7 * 8 =   56 bytes 
 };
 
 
@@ -99,10 +98,8 @@ void initEEPROM(void) {
     Serial.print(sizeof(Channel));
     #endif
 
-    for (int i; i < 8; ++i) {
-        putChannel(i, channels.channel[i]);
-        delay(10);
-    }
+    EEPROM.put(0, channels);
+    delay(40);
 
     #if LOG
     Serial.println(F("EEPROM initilized"));
@@ -127,7 +124,7 @@ void updateChannels(Channels& channels) {
 }
 
 Channel getChannel(int8_t n) { // return get N'th struct in Channels
-    if (n >= 0 && n <= CHANNELS_COUNT) {
+    if (n > 0 && n <= CHANNELS_COUNT) {
         Channel channel;
         EEPROM.get(CHANNELS_ADDRESS + (n-1) * sizeof(Channel), channel);
         return channel;
@@ -135,14 +132,14 @@ Channel getChannel(int8_t n) { // return get N'th struct in Channels
 }
 
 void putChannel(int8_t n, Channel& channel) { // put N'th struct in Channels
-    if (n >= 0 && n <= CHANNELS_COUNT) EEPROM.put(CHANNELS_ADDRESS + (n - 1) * sizeof(Channel), channel);
+    if (n > 0 && n <= CHANNELS_COUNT) EEPROM.put(CHANNELS_ADDRESS + (n - 1) * sizeof(Channel), channel);
 }
 
 void resetEEPROM(void) {
     #if LOG
     Serial.println(F("Factory reset of EEPROM"));
     #endif
-    for (int i; i < 1024; ++i) {
+    for (int i = 0; i < 1024; ++i) {
         EEPROM.update(i, 255);
         delay(10);
     }

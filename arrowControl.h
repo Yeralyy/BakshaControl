@@ -27,7 +27,7 @@ class ArrowControl {
         bool _changedFlag {0}; bool _first {1};
         bool _inChannelFlag {0};
         bool _newReadFlag {1}; // Flag for EEPROM read
-        bool _channelFlag {0};
+        bool _channelFlag {1};
 	    bool _settingsChanged {0};
         bool _modesFlag = {0};
         uint8_t _oneByte {0};
@@ -35,7 +35,7 @@ class ArrowControl {
 
         void redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
-        void constrainModes(void);
+        //void constrainModes(void);
 };
 
 
@@ -150,7 +150,6 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 if (_modesFlag && _lastMode != currentChannel.mode) {
                     switch (currentChannel.mode) {
                         case TIMER:
-                            currentChannel.data.timerMode.timer = 0;
                             currentChannel.data.timerMode.periodHour = 0;
                             currentChannel.data.timerMode.periodMinute = 0;
                             currentChannel.data.timerMode.periodSecond = 0;
@@ -160,14 +159,12 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                             break;
 
                         case SENSOR:
-                            currentChannel.data.sensorMode.timer = 0;
                             currentChannel.data.sensorMode.threshold = 1023;
                             currentChannel.data.sensorMode.workMinute = 0;
                             currentChannel.data.sensorMode.workSecond = 0;
                             break;
 
                         case DAY:
-                            currentChannel.data.dayMode.timer = 0;
                             currentChannel.data.dayMode.startHour = 0;
                             currentChannel.data.dayMode.startMinute = 0;
                             currentChannel.data.dayMode.startSecond = 0;

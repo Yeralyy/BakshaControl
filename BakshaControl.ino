@@ -15,6 +15,7 @@ Credits: Thanks to all libraries authors which i used in this project
 #include "eeprom_control.h"
 #include "display.h"
 #include "arrowControl.h"
+#include "schedueler.h"
 
 #define ONE_SECOND 1000
 #define HALF_MINUTE 30000
@@ -22,7 +23,7 @@ Credits: Thanks to all libraries authors which i used in this project
 #define ONE_HOUR  36000000UL // 1hour = 60 minute = 3600 sec = 36 000 000 milliseconds
 
 
-
+#define SW 6
 
 
 /*
@@ -32,7 +33,7 @@ Credits: Thanks to all libraries authors which i used in this project
 */
 
 
-encMinim enc(7, 6, 8, 0);
+encMinim enc(1, 7, 6, 0);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 ThreeWire myWire(4, 5, 2);
 RtcDS1302<ThreeWire> rtc(myWire);
@@ -89,22 +90,20 @@ void setup() {
   if (now < compiled) rtc.SetDateTime(compiled);
   // ---------------- RTC INIT ------------------- 
 
-  /*
-  #if LOG
-  Serial.print(now.Hour());
-  Serial.print(":");
-  Serial.print(now.Minute());
-  Serial.println();
-  #endif
-  */
+  for (int i = 0; i < 8; ++i) {
+    if (i == 20) {
+      pinMode(A6, OUTPUT);
+    } else {
+    pinMode(channelsPins[i], OUTPUT); }
 
+  }
 
 
   state = MAIN_MENU;
   drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
   updateTime(lcd, now);
 
-  if (!digitalRead(8)) {
+  if (!digitalRead(SW)) {
     factoryReset();
   }
 
@@ -119,7 +118,7 @@ void setup() {
   initEEPROM();
   #endif
 
-  
+ 
   /*
   #if LOG
   
@@ -158,8 +157,10 @@ void loop() {
   #endif
   */
 
+
   enc.tick(); // encoder handler
   RtcDateTime now = rtc.GetDateTime();
+  scheduelerTick(now);
 
 
   switch (state)
