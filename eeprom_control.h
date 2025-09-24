@@ -35,6 +35,8 @@ struct Channel {
 
             uint8_t workMinute;
             uint8_t workSecond;
+            uint8_t pin;
+
             // 4bytes
         } sensorMode;
 

@@ -19,6 +19,8 @@ class ArrowControl {
     private:
         Channel currentChannel;
 
+        uint32_t _tmr {0};
+
         int8_t _count;
         int8_t _index; // arrow index
         int8_t _indexFlag;
@@ -130,6 +132,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 _inChannelFlag = 0;
                 _index = 0;
 
+
+                if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], LOW);
                 // saving current channel settings
                 if (_channelFlag) {
                     putChannel(_count, currentChannel);
@@ -162,6 +166,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                             currentChannel.data.sensorMode.threshold = 1023;
                             currentChannel.data.sensorMode.workMinute = 0;
                             currentChannel.data.sensorMode.workSecond = 0;
+                            currentChannel.data.sensorMode.pin = 14; // A0 default
                             break;
 
                         case DAY:
@@ -181,6 +186,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 switch (_index) {
                     case 0: // 
                         /* Saving Channel settings*/
+
+                        if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], LOW);
 
                         if (_channelFlag) {
                             putChannel(_count, currentChannel);
@@ -227,6 +234,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.setCursor(0, 1);
                                 lcd.print("Mode: <Day>");
                                 break;
+                            case SENSOR:
+                                lcd.setCursor(0, 1);
+                                lcd.print("Mode: <Sensor>");
                         }
                         
                         _changedFlag = 1;
@@ -286,6 +296,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 switch (_index) {
                     case 0:
                         /* Saving channel settings in EEPROM */
+                        if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], LOW);
+
                         if (_channelFlag) { 
                             putChannel(_count, currentChannel);
                             _channelFlag = 0;
@@ -413,11 +425,11 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
             break;
 
         case SENSOR:
-            if (_index > 3 && _indexFlag == 3) {_changedFlag = 0; _index = 3; }
+            if (_index > 4 && _indexFlag == 4) {_changedFlag = 0; _index = 4; }
             break;    
    }
 
-    if (_changedFlag || _settingsChanged) updateDisplay(lcd, state);
+    if (_changedFlag || _settingsChanged || (millis() - _tmr > 500)) updateDisplay(lcd, state);
 
 
     if (_index != 0 && enc.isRightH()) {
@@ -579,6 +591,19 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                         } else currentChannel.data.sensorMode.workSecond = 59;
 
                         break;
+                    
+                    case 4:
+                        ++currentChannel.data.sensorMode.pin;
+                        if (currentChannel.data.sensorMode.pin < 20 && currentChannel.data.sensorMode.pin > 17) {
+                            currentChannel.data.sensorMode.pin = 20;
+                        }
+
+                        if (currentChannel.data.sensorMode.pin > 21) {
+                            currentChannel.data.sensorMode.pin = 21;
+                        }
+                        _oneByte |= 1 << 3; // 3th bit for analog pin change
+
+                        break;
 
                 }
 
@@ -718,6 +743,18 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                             else --currentChannel.data.sensorMode.workSecond;
                         } else currentChannel.data.sensorMode.workSecond = 0;
                         _oneByte |= 1 << 2; // 2th bit for threshold
+                        break;
+                    case 4:
+                        --currentChannel.data.sensorMode.pin;
+                        if (currentChannel.data.sensorMode.pin < 20 && currentChannel.data.sensorMode.pin > 17) {
+                            currentChannel.data.sensorMode.pin = 17;
+                        }
+
+                        if (currentChannel.data.sensorMode.pin < 14) {
+                            currentChannel.data.sensorMode.pin = 14;
+                        }
+                        _oneByte |= 1 << 3; // 3th bit for analog pin change
+
                         break;
                 }
                 _settingsChanged = 1;
@@ -957,14 +994,38 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print('m');
                         print2digits(currentChannel.data.sensorMode.workSecond, lcd, 10, 2);
                         lcd.print('s');
+
+                        lcd.setCursor(0, 3);
+                        lcd.print("Pin: A");
+                        
+                        switch (currentChannel.data.sensorMode.pin) {
+                            case 14:
+                                lcd.print('0');
+                                break;
+                            case 15:
+                                lcd.print('1');
+                                break;
+                            case 16:
+                                lcd.print('2');
+                                break;
+                            case 17:
+                                lcd.print('3');
+                                break;
+                            case 20:
+                                lcd.print('6');
+                                break;
+                            case 21:
+                                lcd.print('7');
+                                break;
+                            default:
+                                lcd.print('0');
+                                break;
+                        }
                         
 
-                        /*
-                        lcd.setCursor(0, 3);
-                        lcd.print("Value: ");
-                        lcd.print()
-                        int sensorValue = analogRead(currentChannel.pin);
-                        */
+                        lcd.setCursor(9, 3);
+                        lcd.print("Val: ");
+                        lcd.print(analogRead(currentChannel.data.sensorMode.pin));
                        break;
                 }
             break;
@@ -1147,6 +1208,14 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
         // ==================================== MODES =======================================
         
         case MODES:
+            if (currentChannel.mode == SENSOR && millis() - _tmr > 300) {
+                _tmr = millis();
+                lcd.setCursor(14, 3);
+                lcd.print("      ");
+                lcd.setCursor(14, 3);
+                lcd.print(analogRead(currentChannel.data.sensorMode.pin));
+            }
+
             if (_changedFlag) {
                 switch (currentChannel.mode) {
                     case DAY:
@@ -1268,6 +1337,9 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                             case 3:
                                 lcd.setCursor(9, 2);
                                 break;
+                            case 4:
+                                lcd.setCursor(4, 3);
+                                break;
                         }
                         lcd.print(' ');
 
@@ -1283,6 +1355,9 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 break;
                             case 3:
                                 lcd.setCursor(9, 2);
+                                break;
+                            case 4:
+                                lcd.setCursor(4, 3);
                                 break;
                         }
                         lcd.print('>');
@@ -1423,6 +1498,38 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 
                 print2digits(currentChannel.data.sensorMode.workSecond, lcd, 10, 2);
                 _oneByte &= 251;
+            }
+
+            if (_oneByte & (1 << 3)) {
+                lcd.setCursor(6, 3);
+                lcd.print(' ');
+                lcd.setCursor(6, 3);
+                
+                switch (currentChannel.data.sensorMode.pin) {
+                    case 14:
+                        lcd.print('0');
+                        break;
+                    case 15:
+                        lcd.print('1');
+                        break;
+                    case 16:
+                        lcd.print('2');
+                        break;
+                    case 17:
+                        lcd.print('3');
+                        break;
+                    case 20:
+                        lcd.print('6');
+                        break;
+                    case 21:
+                        lcd.print('7');
+                        break;
+                }
+                lcd.setCursor(14, 3);
+                lcd.print("      ");
+                lcd.setCursor(14, 3);
+                lcd.print(analogRead(currentChannel.data.sensorMode.pin));
+                _oneByte &= 247;
             }
 
 			break;

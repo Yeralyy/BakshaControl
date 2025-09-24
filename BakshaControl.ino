@@ -26,6 +26,7 @@ Credits: Thanks to all libraries authors which i used in this project
 #define SW 6
 
 
+
 /*
 #define s1 7
 #define s2 6
@@ -91,12 +92,15 @@ void setup() {
   // ---------------- RTC INIT ------------------- 
 
   for (int i = 0; i < 8; ++i) {
-    if (i == 20) {
-      pinMode(A6, OUTPUT);
-    } else {
-    pinMode(channelsPins[i], OUTPUT); }
-
+    pinMode(channelsPins[i], OUTPUT); 
   }
+
+  pinMode(14, INPUT);
+  pinMode(15, INPUT);
+  pinMode(16, INPUT);
+  pinMode(17, INPUT);
+  pinMode(20, INPUT);
+  pinMode(21, INPUT);
 
 
   state = MAIN_MENU;
@@ -157,6 +161,9 @@ void loop() {
   #endif
   */
 
+  #if LOG
+  Serial.println(analogRead(14));
+  #endif
 
   enc.tick(); // encoder handler
   RtcDateTime now = rtc.GetDateTime();

@@ -60,6 +60,14 @@ void scheduelerTick(RtcDateTime& now) {
                 break;
 
             case SENSOR:
+                if (analogRead(channelsPins[i - 1]) >= currentChannel.data.sensorMode.threshold && !digitalRead(channelsPins[i - 1])) {
+                    digitalWrite(channelsPins[i - 1], HIGH);
+                    timers[i - 1] = millis();
+                }
+
+                if (millis() - timers[i - 1] > currentChannel.data.sensorMode.workMinute * 60000 + currentChannel.data.sensorMode.workSecond * 1000 && digitalRead(channelsPins[i - 1])) {
+                    digitalWrite(channelsPins[i - 1], LOW);
+                }
             
 
                 break;
