@@ -16,6 +16,7 @@ enum Mode : uint8_t {
     TIMER,
     RTC,
     DAY,  // every day
+    WEEK,
     SENSOR,
     // SCHEDUEL 
     // WEEK

@@ -7,19 +7,33 @@
 #define EEPROM_KEY_ADDRESS 1023
 #define EEPROM_KEY 22
 
-#define CHANNELS_COUNT 8 
+#define CHANNELS_COUNT 4 
 #define SERVOS 4 // later
 
 #define CHANNELS_ADDRESS 0
 #define CHANNELS_SIZE 104
 
 
-const uint8_t channelsPins[8] {3, 8, 9, 10, 11, 12, 13, 20}; // A6 - 20
-uint32_t timers[8] {0, 0, 0, 0, 0, 0, 0, 0};
+const uint8_t channelsPins[CHANNELS_COUNT] {8, 9, 10, 11}; // A6 - 20
+uint32_t timers[CHANNELS_COUNT] {0, 0, 0, 0};
+
+struct Day {
+    // start
+    uint8_t startHour;
+    uint8_t startMinute;
+    uint8_t startSecond;
+
+    // end
+    uint8_t endHour;
+    uint8_t endMinute;
+    uint8_t endSecond;
+
+    bool enabled;
+
+}; // 7 bytes
 
 struct Channel {
     union {
-        // you can notice that all timer variables is int32_t and not uint32_t. So in future if you want to compare these variables with milli() which is uin32_t you should explicitly convert in32_t to uint32_t, undefined behavier otherwise
         struct {
             uint8_t periodHour;
             uint8_t periodMinute;
@@ -56,17 +70,34 @@ struct Channel {
         } dayMode;
 
         struct {
+            Day days[7];
+            /*
+            Day monday; // 7 bytes
+            Day tuesday; 
+            Day wednesday;
+            Day thursday;
+            Day friday;
+
+            Day saturday;
+            Day sunday;
+            */
+
+
+        } weekMode; // 49
+
+        struct {
             // empty for now
             //uint32_t timer;
         } rtcMode;
+
     } data; // 6  bytes
 
     Mode mode {OFF}; // 1 byte
-}; // 7 bytes
+}; // 49  bytes
 
 
 struct Channels {
-    Channel channel[CHANNELS_COUNT]; // 7 * 8 =   56 bytes 
+    Channel channel[CHANNELS_COUNT]; // 4 * 49 = 196 bytes 
 };
 
 
@@ -111,7 +142,7 @@ void initEEPROM(void) {
 }
 
 void factoryReset(void) {
-    for (int8_t i = 0; i < 8; i++) {
+    for (int8_t i = 0; i < CHANNELS_COUNT; i++) {
         Channel channel {};
         putChannel(i, channel);
     }
@@ -141,7 +172,7 @@ void resetEEPROM(void) {
     #if LOG
     Serial.println(F("Factory reset of EEPROM"));
     #endif
-    for (int i = 0; i < 1024; ++i) {
+    for (int i = 0; i < 1024 ; ++i) {
         EEPROM.update(i, 255);
         delay(10);
     }

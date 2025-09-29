@@ -8,7 +8,7 @@ void scheduelerTick(RtcDateTime& now);
 
 
 void scheduelerTick(RtcDateTime& now) {
-    for (int i = 1; i < 9; ++i) {
+    for (int i = 1; i < CHANNELS_COUNT + 1; ++i) {
         Channel currentChannel {getChannel(i)};
         /*
         #if LOG

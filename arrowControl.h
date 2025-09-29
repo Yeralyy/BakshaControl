@@ -24,6 +24,8 @@ class ArrowControl {
         int8_t _count;
         int8_t _index; // arrow index
         int8_t _indexFlag;
+        int8_t _dayIndex {0};
+        int8_t _dayIndexFlag {0};
 
         // for modes preferenes
         bool _changedFlag {0}; bool _first {1};
@@ -31,7 +33,7 @@ class ArrowControl {
         bool _newReadFlag {1}; // Flag for EEPROM read
         bool _channelFlag {1};
 	    bool _settingsChanged {0};
-        bool _modesFlag = {0};
+        bool _modesFlag = {1};
         uint8_t _oneByte {0};
         Mode _lastMode;
 
@@ -177,6 +179,17 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                             currentChannel.data.dayMode.endMinute = 0;
                             currentChannel.data.dayMode.endSecond = 0;
                             break;
+                        case WEEK:
+                            currentChannel.data.weekMode.days[0] = {0, 0, 0, 0, 0, 0, 1}; // by default at least 1 day is enabled
+                            currentChannel.data.weekMode.days[1] = {0, 0, 0, 0, 0, 0, 0};
+                            currentChannel.data.weekMode.days[2] = {0, 0, 0, 0, 0, 0, 0};
+                            currentChannel.data.weekMode.days[3] = {0, 0, 0, 0, 0, 0, 0};
+                            currentChannel.data.weekMode.days[4] = {0, 0, 0, 0, 0, 0, 0};
+
+                            currentChannel.data.weekMode.days[5] = {0, 0, 0, 0, 0, 0, 0};
+                            currentChannel.data.weekMode.days[6] = {0, 0, 0, 0, 0, 0, 0};
+                            break;
+
                     }
                 }
             }
@@ -276,6 +289,12 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.setCursor(0, 1);
                                 lcd.print("Mode: <Sensor>");
                                 break;
+                            
+                            case WEEK:
+                                lcd.setCursor(0, 1);
+                                lcd.print("Mode: <Week>");
+                                break;
+
                             default:
                                 #if LOG
                                 Serial.println("Unxecpected mode");
@@ -365,6 +384,12 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.setCursor(0, 1);
                                 lcd.print("Mode: <Sensor>"); 
                                 break;
+
+                            case WEEK:
+                                lcd.setCursor(0, 1);
+                                lcd.print("Mode: <Week>");
+                                break;
+
                             default:
                                 #if LOG
                                 Serial.println(F("Unexptected Mode"));
@@ -427,6 +452,14 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
         case SENSOR:
             if (_index > 4 && _indexFlag == 4) {_changedFlag = 0; _index = 4; }
             break;    
+        
+        case WEEK:
+            if (currentChannel.data.weekMode.days[_dayIndex].enabled) {
+                if (_index > 8 && _indexFlag == 8) {_changedFlag = 0; _index = 8; }
+            } else {
+                if (_index > 2 && _indexFlag == 2) {_changedFlag = 0; _index = 2; }
+            }
+            break;
    }
 
     if (_changedFlag || _settingsChanged || (millis() - _tmr > 500)) updateDisplay(lcd, state);
@@ -482,7 +515,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                 switch (_index) {
                     case 1:
                         if (currentChannel.data.dayMode.startHour < 23) {
-                        if (enc.isFast()) currentChannel.data.dayMode.startHour += 3;
+                        if (enc.isFast() && currentChannel.data.dayMode.startHour + 3 < 23) currentChannel.data.dayMode.startHour += 3;
                         else ++currentChannel.data.dayMode.startHour;
                         _oneByte |= 1 << 0 ;} // 0b01 
                         //0th bit for startHour
@@ -498,7 +531,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
 
                         else if (currentChannel.data.dayMode.startMinute < 59) {
                         
-                        if (enc.isFast()) currentChannel.data.dayMode.startMinute += 5;
+                        if (enc.isFast() && currentChannel.data.dayMode.startMinute + 5 < 59) currentChannel.data.dayMode.startMinute += 5;
                         else ++currentChannel.data.dayMode.startMinute;
                         _oneByte |= 1 << 1;
                         } else currentChannel.data.dayMode.startMinute = 59;
@@ -512,7 +545,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                         } 
 
                         else if (currentChannel.data.dayMode.startSecond < 59) {
-                            if (enc.isFast()) currentChannel.data.dayMode.startSecond += 5;
+                            if (enc.isFast() && currentChannel.data.dayMode.startSecond + 5 < 59) currentChannel.data.dayMode.startSecond += 5;
                             else ++currentChannel.data.dayMode.startSecond; 
                             _oneByte |= 1 << 2; 
                         }
@@ -521,7 +554,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                         break;
                     case 4:
                         if (currentChannel.data.dayMode.endHour < 23) {
-                            if (enc.isFast()) currentChannel.data.dayMode.endHour += 3;
+                            if (enc.isFast() && currentChannel.data.dayMode.endHour + 3 < 23) currentChannel.data.dayMode.endHour += 3;
                             else ++currentChannel.data.dayMode.endHour;
                             _oneByte |= 1 << 3; }// 3th bit for endHour 
                         
@@ -535,7 +568,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                         }
 
                         else if (currentChannel.data.dayMode.endMinute < 59) {
-                            if (enc.isFast()) currentChannel.data.dayMode.endMinute += 5;
+                            if (enc.isFast() && currentChannel.data.dayMode.endMinute + 5 < 59) currentChannel.data.dayMode.endMinute += 5;
                             else ++currentChannel.data.dayMode.endMinute; 
                             _oneByte |= 1 << 4; 
                         }
@@ -548,7 +581,7 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                                 _oneByte |= (1 << 4) | (1 << 5); // 5th bit for endSecond
                         }
                         else if (currentChannel.data.dayMode.endSecond < 59) {
-                            if (enc.isFast()) currentChannel.data.dayMode.endSecond += 5;
+                            if (enc.isFast() && currentChannel.data.dayMode.endSecond + 5 < 59) currentChannel.data.dayMode.endSecond += 5;
                             else ++currentChannel.data.dayMode.endSecond; 
                             _oneByte |= 1 << 5; 
                         }
@@ -608,6 +641,98 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                 }
 
 		        _settingsChanged = 1;	
+                break;
+
+            case WEEK:
+                switch (_index) {
+                    case 1:
+                        if (_dayIndex < 6) {_dayIndexFlag = _dayIndex; ++_dayIndex; }
+                        else {_dayIndexFlag = _dayIndex; _dayIndex = 0; } // overflow
+                        _changedFlag = 1;
+                        break;
+                    
+                    case 2:
+                        if (!currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 1; _oneByte |= (1 << 7); }
+                        else {_changedFlag = 0; }
+
+                        break;
+                    case 3:
+                        if (currentChannel.data.weekMode.days[_dayIndex].startHour < 23) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startHour + 3 < 23) currentChannel.data.weekMode.days[_dayIndex].startHour += 3;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].startHour;
+                            _oneByte |= 1 << 0 ; // 0b01 
+                        } else currentChannel.data.dayMode.startHour = 23; // 0th hour
+
+                        break;
+                    case 4:
+                        if (currentChannel.data.weekMode.days[_dayIndex].startMinute >= 59 && currentChannel.data.weekMode.days[_dayIndex].startHour < 23) {
+                        currentChannel.data.weekMode.days[_dayIndex].startMinute = 0;
+                        ++currentChannel.data.weekMode.days[_dayIndex].startHour; 
+                        _oneByte |= (1 << 0) | (1 << 1); // 1th bit for startMinute
+                        } else if (currentChannel.data.weekMode.days[_dayIndex].startMinute < 59) {
+                        
+                        if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startMinute + 5 < 59) currentChannel.data.weekMode.days[_dayIndex].startMinute += 5;
+                        else ++currentChannel.data.weekMode.days[_dayIndex].startMinute;
+                        _oneByte |= 1 << 1;
+                        } else currentChannel.data.weekMode.days[_dayIndex].startMinute = 59;
+                        
+                        break;
+                    case 5:
+                        if (currentChannel.data.weekMode.days[_dayIndex].startSecond >= 59 && currentChannel.data.weekMode.days[_dayIndex].startHour < 23 && currentChannel.data.weekMode.days[_dayIndex].startMinute < 59) {
+                            currentChannel.data.weekMode.days[_dayIndex].startSecond = 0;
+                            ++currentChannel.data.weekMode.days[_dayIndex].startMinute;
+                            _oneByte |= (1 << 2) | (1 << 1); // 2th bit for startSecond
+                        } 
+
+                        else if (currentChannel.data.weekMode.days[_dayIndex].startSecond < 59) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startSecond + 5 < 59) currentChannel.data.weekMode.days[_dayIndex].startSecond += 5;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].startSecond; 
+                            _oneByte |= 1 << 2; 
+                        }
+                        else currentChannel.data.weekMode.days[_dayIndex].startSecond = 59;
+
+                        break;
+                    case 6:
+                        if (currentChannel.data.weekMode.days[_dayIndex].endHour < 23) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endHour + 5 < 23) currentChannel.data.weekMode.days[_dayIndex].endHour += 3;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].endHour;
+                            _oneByte |= 1 << 3; }// 3th bit for endHour 
+                        
+                        else currentChannel.data.weekMode.days[_dayIndex].endHour = 23;
+                        break;
+                    case 7:
+                        if (currentChannel.data.weekMode.days[_dayIndex].endMinute >= 59 && currentChannel.data.weekMode.days[_dayIndex].endHour != 23) {
+                            currentChannel.data.weekMode.days[_dayIndex].endMinute = 0;
+                            ++currentChannel.data.weekMode.days[_dayIndex].endHour; 
+                            _oneByte |= (1 << 3) | (1 << 4); // 4th bit for endMinute
+                        }
+
+                        else if (currentChannel.data.weekMode.days[_dayIndex].endMinute < 59) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endMinute + 5 < 59) currentChannel.data.weekMode.days[_dayIndex].endMinute += 5;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].endMinute; 
+                            _oneByte |= 1 << 4; 
+                        }
+                        
+                        break;
+                    case 8:
+                        if (currentChannel.data.weekMode.days[_dayIndex].endSecond >= 59 && currentChannel.data.weekMode.days[_dayIndex].endHour != 23 && currentChannel.data.weekMode.days[_dayIndex].endMinute < 59) {
+                                currentChannel.data.weekMode.days[_dayIndex].endSecond = 0;
+                                ++currentChannel.data.weekMode.days[_dayIndex].endMinute;
+                                _oneByte |= (1 << 4) | (1 << 5); // 5th bit for endSecond
+                        }
+                        else if (currentChannel.data.weekMode.days[_dayIndex].endSecond < 59) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endSecond + 5 < 59) currentChannel.data.weekMode.days[_dayIndex].endSecond += 5;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].endSecond; 
+                            _oneByte |= 1 << 5; 
+                        }
+                        else currentChannel.data.weekMode.days[_dayIndex].endSecond = 0;
+
+                        break;
+
+                }
+
+                if (_index > 2 && _index < 9) _settingsChanged = 1;
+                
                 break;
             
             case RTC:
@@ -757,7 +882,79 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
 
                         break;
                 }
+
+
                 _settingsChanged = 1;
+                break;
+
+            case WEEK:
+                switch (_index) {
+                    case 1:
+                        if (_dayIndex > 0) {_dayIndexFlag = _dayIndex; --_dayIndex; }
+                        else {_dayIndexFlag = _dayIndex; _dayIndex = 6; } // overflow
+                        _changedFlag = 1;
+                        break;
+                    
+                    case 2:
+                        if (currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 0; _oneByte |= (1 << 7); }
+                        else {_changedFlag = 0; }
+
+                        break;
+
+                    case 3:
+                        if (currentChannel.data.weekMode.days[_dayIndex].startHour > 0) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startHour - 3 > 0) currentChannel.data.weekMode.days[_dayIndex].startHour -= 3;
+                            else --currentChannel.data.weekMode.days[_dayIndex].startHour;
+                            _oneByte |= 1 << 0; //0th bit for startHour
+                        }
+
+                        else currentChannel.data.weekMode.days[_dayIndex].startHour = 0;
+                        break;
+
+                    case 4:
+                        if (currentChannel.data.weekMode.days[_dayIndex].startMinute > 0) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startMinute - 5 > 0) currentChannel.data.weekMode.days[_dayIndex].startMinute -= 5;
+                            else --currentChannel.data.weekMode.days[_dayIndex].startMinute;
+                            _oneByte |= 1 << 1; // 1th bit for startMinute
+                        }
+                        else currentChannel.data.weekMode.days[_dayIndex].startMinute = 0; 
+                        break;
+                    case 5:
+                        if (currentChannel.data.weekMode.days[_dayIndex].startSecond > 0) {
+                             if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startSecond - 5 > 0) currentChannel.data.weekMode.days[_dayIndex].startSecond -= 5;
+                            else --currentChannel.data.weekMode.days[_dayIndex].startSecond;
+                            _oneByte |= 1 << 2; // 2th bit for startSecond
+                        }
+                        else currentChannel.data.weekMode.days[_dayIndex].startSecond = 0;
+                        break;
+                    case 6:
+                        if (currentChannel.data.weekMode.days[_dayIndex].endHour > 0) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endHour - 3 > 0) currentChannel.data.weekMode.days[_dayIndex].endHour -= 3;
+                            else --currentChannel.data.weekMode.days[_dayIndex].endHour;
+                            _oneByte |= 1 << 3; // 3th bit for endHour
+                        }
+                        else currentChannel.data.weekMode.days[_dayIndex].endHour = 0;
+                        break;
+                    case 7:
+                        if (currentChannel.data.weekMode.days[_dayIndex].endMinute > 0) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endMinute - 5 > 0) currentChannel.data.weekMode.days[_dayIndex].endMinute -= 5;
+                            else --currentChannel.data.weekMode.days[_dayIndex].endMinute;
+                            _oneByte |= 1 << 4; // 4th bit for endMinute
+                        }
+                        else currentChannel.data.weekMode.days[_dayIndex].endMinute = 0;
+                        break;
+                    case 8:
+                        if (currentChannel.data.weekMode.days[_dayIndex].endSecond > 0) {
+                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endSecond - 5 > 0) currentChannel.data.weekMode.days[_dayIndex].endSecond -= 5;
+                            else --currentChannel.data.weekMode.days[_dayIndex].endSecond;
+                            _oneByte |= 1 << 5; // 5th bit for endSecond
+                        }
+                        else currentChannel.data.weekMode.days[_dayIndex].endSecond = 0;
+                        break;
+                }
+
+                if (_index > 2 && _index < 9) _settingsChanged = 1;
+
                 break;
             
             case RTC:
@@ -785,7 +982,6 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
 
 
 }
-
 
 
 
@@ -848,59 +1044,54 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 lcd.setCursor(15, 0);
                 lcd.print("     ");
 
+                if (currentChannel.mode == OFF) {
+                    lcd.setCursor(17, 0);
+                    lcd.print("Off");
+                } else {
+                    lcd.setCursor(18, 0);
+                    lcd.print("On");
+                }
+                
+
                 switch (currentChannel.mode) {
                     case OFF:
-                        lcd.setCursor(17, 0);
-                        lcd.print("Off");
-
                         lcd.setCursor(16, 3);
                         lcd.print("Back");
                         break;
                     case TIMER:
-                        lcd.setCursor(18, 0);
-                        lcd.print("On");
-
                         lcd.setCursor(0, 1);
                         lcd.print("Mode: <Timer>");
 
-                        lcd.setCursor(16, 3);
-                        lcd.print("Back");
                         break;
 
                     case RTC:
-                        lcd.setCursor(18, 0);
-                        lcd.print("On");
-                
                         lcd.setCursor(0, 1);
                         lcd.print("Mode: <RTC>");
-
-                        lcd.setCursor(16, 3);
-                        lcd.print("Back");
 
                         break;
 
                     case DAY:
-                        lcd.setCursor(18, 0);
-                        lcd.print("On");
-
                         lcd.setCursor(0, 1);
                         lcd.print("Mode: <Day>");
 
-                        lcd.setCursor(16, 3);
-                        lcd.print("Back");
                         break;
                     
                     case SENSOR:
-                        lcd.setCursor(18, 0);
-                        lcd.print("On");
-
                         lcd.setCursor(0, 1);
                         lcd.print("Mode: <Sensor>");
 
-                        lcd.setCursor(16, 3);
-                        lcd.print("Back");
                         break;
+
+                    case WEEK:
+                        lcd.setCursor(0, 1);
+                        lcd.print("Mode: <Week>");
+
+                        break;
+
                     }
+
+                lcd.setCursor(16, 3);
+                lcd.print("Back");
             break;
 
             case MODES:
@@ -908,8 +1099,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                     case TIMER:
                         lcd.setCursor(0, 0);
                         lcd.print("<TIMER>");
-                        lcd.setCursor(15, 0);
-                        lcd.print(">Back");
 
 
                         lcd.setCursor(0, 1);
@@ -937,8 +1126,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                     case RTC:
                         lcd.setCursor(0, 0);
                         lcd.print("<RTC>");
-                        lcd.setCursor(15, 0);
-                        lcd.print(">Back");
 
                         lcd.setCursor(0, 1);
                         lcd.print("Start: 00:00.00");
@@ -953,8 +1140,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                     case DAY:
                         lcd.setCursor(0, 0);
                         lcd.print("<Day>");
-                        lcd.setCursor(15, 0);
-                        lcd.print(">Back");
 
                         lcd.setCursor(0, 1);
                         lcd.print("Start: ");
@@ -981,8 +1166,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                     case SENSOR:
                         lcd.setCursor(0, 0);
                         lcd.print("<Sensor>");
-                        lcd.setCursor(15, 0);
-                        lcd.print(">Back");
 
                         lcd.setCursor(0, 1);
                         lcd.print("Threshold: ");
@@ -1027,7 +1210,36 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print("Val: ");
                         lcd.print(analogRead(currentChannel.data.sensorMode.pin));
                        break;
+                    
+                    case WEEK:
+                        lcd.setCursor(0, 0);
+                        lcd.print("<WEEK>");
+
+                        lcd.setCursor(0, 1);
+                        lcd.print("Day: Monday       On");
+
+                        lcd.setCursor(0, 2);
+                        lcd.print("Start: ");
+                        print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
+                        lcd.print(':');
+                        print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
+                        lcd.print('.');
+                        print2digits(currentChannel.data.weekMode.days[_dayIndex].startSecond, lcd, 13, 2);
+                        lcd.print('s');
+
+                        lcd.setCursor(0, 3);
+                        lcd.print("End: ");
+                        print2digits(currentChannel.data.weekMode.days[_dayIndex].endHour, lcd, 5, 3);
+                        lcd.print(':');
+                        print2digits(currentChannel.data.weekMode.days[_dayIndex].endMinute, lcd, 8, 3);
+                        lcd.print('.');
+                        print2digits(currentChannel.data.weekMode.days[_dayIndex].endSecond, lcd, 11, 3);
+                        lcd.print('s');
+
+                        break;
                 }
+            lcd.setCursor(15, 0);
+            lcd.print(">Back");
             break;
 
         }
@@ -1123,6 +1335,13 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.setCursor(0, 1);
                                 lcd.print("Mode: <Sensor>");
                                 break;
+                            
+                            case WEEK:
+                                lcd.setCursor(0, 1);
+                                lcd.print("                    ");
+                                lcd.setCursor(0, 1);
+                                lcd.print("Mode: <Week>");
+                                break;
                             }
                         break;
 
@@ -1188,6 +1407,14 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.setCursor(0, 1);
                                 lcd.print(">Mode: <Sensor>");
                                 break;
+
+                            case WEEK:
+                                lcd.setCursor(0, 1);                            
+                                lcd.print("              ");
+                                lcd.setCursor(0, 1);                            
+                                lcd.print(">Mode: <Week>");
+                                break;
+
                             }
                         break;
 
@@ -1364,13 +1591,205 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 
 
                         break;
+
+                    case WEEK:
+
+                        if (_oneByte & (1 << 7)) {
+                            if (currentChannel.data.weekMode.days[_dayIndex].enabled) { // if its on
+                                lcd.setCursor(16, 1);
+                                lcd.print("    "); // clearing
+
+                                lcd.setCursor(17, 1);
+                                lcd.print(">On");
+
+                                lcd.setCursor(0, 2);
+                                lcd.print("Start: ");
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
+                                lcd.print(':');
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
+                                lcd.print('.');
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].startSecond, lcd, 13, 2);
+                                lcd.print('s');
+
+                                lcd.setCursor(0, 3);
+                                lcd.print("End: ");
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].endHour, lcd, 5, 3);
+                                lcd.print(':');
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].endMinute, lcd, 8, 3);
+                                lcd.print('.');
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].endSecond, lcd, 11, 3);
+                                lcd.print('s');
+
+
+                            } else {
+                                lcd.setCursor(16, 1);
+                                lcd.print("    "); // clearing
+
+                                lcd.setCursor(16, 1);
+                                lcd.print(">Off");
+
+                                lcd.setCursor(0, 2);
+                                lcd.print("                   ");
+                                lcd.setCursor(0, 3);
+                                lcd.print("                   ");
+
+                            }
+
+                            _oneByte &= 127;
+                            _changedFlag = 0;
+                        }
+
+
+                        switch (_indexFlag) {
+                            case 0:
+                                lcd.setCursor(15, 0);
+                                lcd.print(' ');
+                                break;
+                            case 1:
+                                lcd.setCursor(4, 1);
+                                lcd.print(' ');
+                                break;
+                            case 2:
+                                if (currentChannel.data.weekMode.days[_dayIndex].enabled) lcd.setCursor(17, 1);
+                                else lcd.setCursor(16, 1);
+
+                                lcd.print(' ');
+                                break;
+                            case 3:
+                                lcd.setCursor(6, 2);
+                                lcd.print(' ');
+                                break;
+                            case 4:
+                                lcd.setCursor(9, 2);
+                                lcd.print(':');
+                                break;
+                            case 5:
+                                lcd.setCursor(12, 2);
+                                lcd.print('.');
+                                break;
+                            case 6:
+                                lcd.setCursor(4, 3);
+                                lcd.print(' ');
+                                break;
+                            case 7:
+                                lcd.setCursor(7, 3);
+                                lcd.print(':');
+                                break;
+                            case 8:
+                                lcd.setCursor(10, 3);
+                                lcd.print('.');
+                                break;
+                        }
+
+                        switch (_index) {
+                            case 0:
+                                lcd.setCursor(14, 0);
+                                lcd.print(' ');
+                                break;
+                            case 1:
+                                lcd.setCursor(4, 1);
+                                break;
+                            case 2:
+                                if (currentChannel.data.weekMode.days[_dayIndex].enabled) lcd.setCursor(17, 1);
+                                else lcd.setCursor(16, 1);
+
+                                break;
+                            case 3:
+                                lcd.setCursor(6, 2);
+                                break;
+                            case 4:
+                                lcd.setCursor(9, 2);
+                                break;
+                            case 5:
+                                lcd.setCursor(12, 2);
+                                break;
+                            case 6:
+                                lcd.setCursor(4, 3);
+                                break;
+                            case 7:
+                                lcd.setCursor(7, 3);
+                                break;
+                            case 8:
+                                lcd.setCursor(10, 3);
+                                break;
+                        }
+
+
+                        lcd.print('>');
+
+                        if (_dayIndex != _dayIndexFlag) {
+                            // cleaning
+                            lcd.setCursor(0, 1);
+                            lcd.print("                   ");
+                            lcd.setCursor(0, 2);
+                            lcd.print("                   ");
+                            lcd.setCursor(0, 3);
+                            lcd.print("                   ");
+                            
+                            lcd.setCursor(0, 1);
+                            switch (_dayIndex) {
+                                case 0: // monday
+                                    lcd.print("Day:>Monday");
+                                    break;
+                                case 1: // tuesday 
+                                    lcd.print("Day:>Tuesday");
+                                    break;
+                                case 2: // Wednesday
+                                    lcd.print("Day:>Wednesday");
+                                    break;
+                                case 3: // Thursday
+                                    lcd.print("Day:>Thursday");
+                                    break;
+                                case 4: // Friday
+                                    lcd.print("Day:>Friday");
+                                    break;
+                                case 5: // Satruday
+                                    lcd.print("Day:>Satruday");
+                                    break;
+                                case 6: // Sunday
+                                    lcd.print("Day:>Sunday");
+                                    break;
+                            }
+
+                            if (currentChannel.data.weekMode.days[_dayIndex].enabled) {
+                                lcd.setCursor(18, 1);
+                                lcd.print("On");
+
+                                lcd.setCursor(0, 2);
+                                lcd.print("Start: ");
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
+                                lcd.print(':');
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
+                                lcd.print('.');
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].startSecond, lcd, 13, 2);
+                                lcd.print('s');
+
+                                lcd.setCursor(0, 3);
+                                lcd.print("End: ");
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].endHour, lcd, 5, 3);
+                                lcd.print(':');
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].endMinute, lcd, 8, 3);
+                                lcd.print('.');
+                                print2digits(currentChannel.data.weekMode.days[_dayIndex].endSecond, lcd, 11, 3);
+                                lcd.print('s');
+
+                            } else {
+                                lcd.setCursor(17, 1);
+                                lcd.print("Off");
+                            }
+
+                            _dayIndexFlag = _dayIndex;
+                        }
+
+                        break;
+                        
                     
                     case RTC:
                         //
                         break;
                         
+                    }
 
-                }
 
 
             }
@@ -1533,6 +1952,57 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
             }
 
 			break;
+
+        case WEEK:
+            if (_oneByte & (1 << 0))  {
+			    lcd.setCursor(7, 2);
+			    lcd.print("  ");
+
+                print2digits(currentChannel.data.dayMode.startHour, lcd, 7, 2);
+                _oneByte &= 254;
+            }
+
+            if (_oneByte & (1 << 1)) {
+			    lcd.setCursor(10, 2);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.startMinute, lcd, 10, 2);
+                _oneByte &= 253;
+            }
+
+            if (_oneByte & (1 << 2)) {
+			    lcd.setCursor(13, 2);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.startSecond, lcd, 13, 2);
+                _oneByte &= 251;
+            }
+
+            if (_oneByte & (1 << 3)) {
+			    lcd.setCursor(5, 3);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.endHour, lcd, 5, 3);
+                _oneByte &= 247;
+            }
+
+            if (_oneByte & (1 << 4)) {
+			    lcd.setCursor(8, 3);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.endMinute, lcd, 8, 3);
+                _oneByte &= 239;
+            }
+
+            if (_oneByte & (1 << 5)) {
+			    lcd.setCursor(11, 3);
+			    lcd.print("  ");
+
+			    print2digits(currentChannel.data.dayMode.endSecond, lcd, 11, 3);
+                _oneByte &= 223;
+            }
+
+            break;
 
 		case RTC:
 			break;

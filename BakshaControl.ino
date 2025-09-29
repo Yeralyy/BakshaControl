@@ -11,11 +11,19 @@ Credits: Thanks to all libraries authors which i used in this project
 #include <GyverBME280.h>
 #include <LiquidCrystal_I2C.h>
 
+#if SIM800L
+#include <SoftwareSerial.h>
+#include "string.h"
+#define BUF_SIZE 64
+#define INTERRUPT_PIN 3
+#endif
+
 
 #include "eeprom_control.h"
 #include "display.h"
 #include "arrowControl.h"
 #include "schedueler.h"
+
 
 #define ONE_SECOND 1000
 #define HALF_MINUTE 30000
@@ -40,6 +48,9 @@ ThreeWire myWire(4, 5, 2);
 RtcDS1302<ThreeWire> rtc(myWire);
 GyverBME280 bme;
 ArrowControl arrow;
+#if SIM800L
+SoftwareSerial sim800l(13, 12); // 13 - TX, 12 - RX
+#endif
 
 
 // finite state machine
@@ -49,6 +60,20 @@ FSM lastState {IDLE};
 uint32_t menu_tmr {0}; 
 uint32_t time_tmr {0};
 
+#if SIM800L
+char buf[BUF_SIZE];
+volatile bool ringingFlag {0};
+#endif
+
+
+#if SIM800L
+void ringing() {
+  ringingFlag = 1;
+}
+#endif
+
+//void halting() {ringingFlag = 0;}
+
 
 void setup() {
   #if LOG
@@ -57,6 +82,20 @@ void setup() {
 
   #if RESET_EEPROM
   resetEEPROM();
+  #endif
+
+  #if SIM800L
+  Serial.begin(9600);
+  sim800l.begin(9600);
+  sim800l.println("AT");
+  //sim800l.println(F("ATE0V0+CMEE=1;&W"));
+
+
+  pinMode(INTERRUPT_PIN, INPUT_PULLUP);
+  
+  // attaching 3th pin for interrupt RING
+  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), ringing, RISING);
+  //attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), halting, FALLING);
   #endif
 
   lcd.init(); // display
@@ -87,11 +126,15 @@ void setup() {
 
   RtcDateTime now = rtc.GetDateTime();
   
+  #if LOG
+  Serial.println(now.Hour());
+  Serial.println(now.Minute());
+  #endif
 
   if (now < compiled) rtc.SetDateTime(compiled);
   // ---------------- RTC INIT ------------------- 
 
-  for (int i = 0; i < 8; ++i) {
+  for (int i = 0; i < CHANNELS_COUNT; ++i) {
     pinMode(channelsPins[i], OUTPUT); 
   }
 
@@ -121,49 +164,49 @@ void setup() {
   #if INIT_EEPROM
   initEEPROM();
   #endif
-
- 
-  /*
-  #if LOG
-  
-  for (int i = 1; i <= 8; ++i) {
-    Channel channel {getChannel(i)};
-    
-    Serial.print("Channel: ");
-    Serial.print(i);
-    Serial.print(" Mode: ");
-    
-    switch (channel.mode) {
-      case OFF:
-        Serial.print("OFF");
-        break;
-      case TIMER:
-        Serial.print("Timer");
-        break;
-      case RTC:
-        Serial.print("RTC");
-        break;
-    }
-    Serial.println();
-  }
-  #endif
-  */
 }
-
-
-
 
 void loop() {
 
   /*
   #if LOG
   Serial.println(state);
-  #endif
-  */
+ */
 
-  #if LOG
-  Serial.println(analogRead(14));
-  #endif
+  #if SIM800L
+  // ATE0V0+CMEE=1;&W no logging
+  // ATE1V1+CMEE=2;&W for logging
+  // AT+CMGS="+7928xxxxxxx" sending sms
+  // ATD+7777xxxxxxxx; call
+  
+
+  //AT+CMGDA="DEL ALL" delete all sms
+  //AT+CMGL="REC UNREAD",1 list of sms
+  //AT+CMGR=7,1 read 7th sms in memmory of SIM
+  //AT+CMGS="+7928xxxxxxx" send sms
+
+  
+  /*
+  if (ringingFlag)  { // Action. SMS/CALL
+    if (sim800l.available()) {
+      //Serial.write(sim800l.read());
+      //buf.strcat
+    }
+  }
+    */
+    
+
+  if (sim800l.available()) {
+    Serial.println(sim800l.read());
+  }
+
+  if (Serial.available()) {
+    sim800l.println(Serial.read());
+  }
+
+  
+
+  #else
 
   enc.tick(); // encoder handler
   RtcDateTime now = rtc.GetDateTime();
@@ -175,7 +218,7 @@ void loop() {
     case MAIN_MENU:
 
       arrow.menuTick(enc, lcd, state);
-      if (millis() - time_tmr >= HALF_MINUTE) {
+      if (millis() - time_tmr >= 5000) {
         time_tmr = millis(); // genius code huh?
         #if LOG
         Serial.println(F("Updating Time"));
@@ -204,4 +247,5 @@ void loop() {
       arrow.modesTick(enc, lcd, state);
       break;
   }
+  #endif
 }
