@@ -156,38 +156,38 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 if (_modesFlag && _lastMode != currentChannel.mode) {
                     switch (currentChannel.mode) {
                         case TIMER:
-                            currentChannel.data.timerMode.periodHour = 0;
-                            currentChannel.data.timerMode.periodMinute = 0;
-                            currentChannel.data.timerMode.periodSecond = 0;
+                            if (currentChannel.data.timerMode.periodHour > 23) currentChannel.data.timerMode.periodHour = 0;
+                            if (currentChannel.data.timerMode.periodMinute > 59) currentChannel.data.timerMode.periodMinute = 0;
+                            if (currentChannel.data.timerMode.periodSecond > 59) currentChannel.data.timerMode.periodSecond = 0;
 
-                            currentChannel.data.timerMode.workMinute = 0;
-                            currentChannel.data.timerMode.workSecond = 0;
+                            if (currentChannel.data.timerMode.workMinute > 99) currentChannel.data.timerMode.workMinute = 0;
+                            if (currentChannel.data.timerMode.workSecond > 59) currentChannel.data.timerMode.workSecond = 0;
                             break;
 
                         case SENSOR:
-                            currentChannel.data.sensorMode.threshold = 1023;
-                            currentChannel.data.sensorMode.workMinute = 0;
-                            currentChannel.data.sensorMode.workSecond = 0;
+                            if (currentChannel.data.sensorMode.threshold < 0 || currentChannel.data.sensorMode.threshold > 1023) currentChannel.data.sensorMode.threshold = 1023;
+                            if (currentChannel.data.sensorMode.workMinute > 99) currentChannel.data.sensorMode.workMinute = 0;
+                            if (currentChannel.data.sensorMode.workSecond > 59) currentChannel.data.sensorMode.workSecond = 0;
                             currentChannel.data.sensorMode.pin = 14; // A0 default
                             break;
 
                         case DAY:
-                            currentChannel.data.dayMode.startHour = 0;
-                            currentChannel.data.dayMode.startMinute = 0;
-                            currentChannel.data.dayMode.startSecond = 0;
-                            currentChannel.data.dayMode.endHour = 0;
-                            currentChannel.data.dayMode.endMinute = 0;
-                            currentChannel.data.dayMode.endSecond = 0;
+                            if (currentChannel.data.dayMode.startHour > 23) currentChannel.data.dayMode.startHour = 0;
+                            if (currentChannel.data.dayMode.startMinute > 59) currentChannel.data.dayMode.startMinute = 0;
+                            if (currentChannel.data.dayMode.startSecond > 59) currentChannel.data.dayMode.startSecond = 0;
+                            if (currentChannel.data.dayMode.endHour > 23) currentChannel.data.dayMode.endHour = 0;
+                            if (currentChannel.data.dayMode.endMinute > 59) currentChannel.data.dayMode.endMinute = 0;
+                            if (currentChannel.data.dayMode.endSecond > 59) currentChannel.data.dayMode.endSecond = 0;
                             break;
                         case WEEK:
                             currentChannel.data.weekMode.days[0] = {0, 0, 0, 0, 0, 0, 1}; // by default at least 1 day is enabled
-                            currentChannel.data.weekMode.days[1] = {0, 0, 0, 0, 0, 0, 0};
-                            currentChannel.data.weekMode.days[2] = {0, 0, 0, 0, 0, 0, 0};
-                            currentChannel.data.weekMode.days[3] = {0, 0, 0, 0, 0, 0, 0};
-                            currentChannel.data.weekMode.days[4] = {0, 0, 0, 0, 0, 0, 0};
+                            //currentChannel.data.weekMode.days[1] = {0, 0, 0, 0, 0, 0, 0};
+                            //currentChannel.data.weekMode.days[2] = {0, 0, 0, 0, 0, 0, 0};
+                            //currentChannel.data.weekMode.days[3] = {0, 0, 0, 0, 0, 0, 0};
+                            //currentChannel.data.weekMode.days[4] = {0, 0, 0, 0, 0, 0, 0};
 
-                            currentChannel.data.weekMode.days[5] = {0, 0, 0, 0, 0, 0, 0};
-                            currentChannel.data.weekMode.days[6] = {0, 0, 0, 0, 0, 0, 0};
+                            //currentChannel.data.weekMode.days[5] = {0, 0, 0, 0, 0, 0, 0};
+                            //currentChannel.data.weekMode.days[6] = {0, 0, 0, 0, 0, 0, 0};
                             break;
 
                     }
@@ -1216,10 +1216,38 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print("<WEEK>");
 
                         lcd.setCursor(0, 1);
-                        lcd.print("Day: Monday       On");
+                        //lcd.print("Day: Monday       On");
+                        switch (_dayIndex) {
+                            case 0:
+                                lcd.print("Day: Monday");
+                                break;
+                            case 1:
+                                lcd.print("Day: Tuesday");
+                                break;
+                            case 2:
+                                lcd.print("Day: Wednesday");
+                                break;
+                            case 3:
+                                lcd.print("Day: Thursdsay");
+                                break;
+                            case 4:
+                                lcd.print("Day: Friday");
+                                break;
+                            case 5:
+                                lcd.print("Day: Saturday");
+                                break;
+                            case 6:
+                                lcd.print("Day: Sunday");
+                                break;
+                        }
+
+                        if (currentChannel.data.weekMode.days[_dayIndex].enabled) {
+                        lcd.setCursor(18, 1);
+                        lcd.print("On");
 
                         lcd.setCursor(0, 2);
                         lcd.print("Start: ");
+                        //_dayIndex = 0;
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
                         lcd.print(':');
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
@@ -1235,6 +1263,10 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print('.');
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].endSecond, lcd, 11, 3);
                         lcd.print('s');
+                        } else {
+                            lcd.setCursor(17, 1);
+                            lcd.print("Off");
+                        }
 
                         break;
                 }
