@@ -71,6 +71,59 @@ void scheduelerTick(RtcDateTime& now) {
             
 
                 break;
+
+            case WEEK:
+                /*
+                switch (now.DayOfWeek()) {
+                    case 0: //Sunday
+
+                        if (currentChannel.data.weekMode.days.[6].enabled) {
+                            if (digitalRead(channelsPin[i - 1]) == LOW) {
+                                if (now.Hour() == currentChannel.data.weekMode.days[6].startHour) {
+                                    if (now.Minute() == currentChannel.data.weekMode.days[6].startMinute) {
+                                        if (now.Second() >= currentChannel.data.weekMode.days[6])
+                                    }
+                                }
+                            }
+
+                        } else break; 
+                }
+                break;
+                */
+               uint8_t today = now.DayOfWeek();
+               if (today >= 1) --today;
+               else if (today == 0) today = 6; // sunday
+                
+               
+               if (currentChannel.data.weekMode.days[today].enabled) {
+               
+                    if (digitalRead(channelsPins[i - 1]) == LOW) {
+                        if (now.Hour() == currentChannel.data.weekMode.days[today].startHour) {
+                            if (now.Minute() == currentChannel.data.weekMode.days[today].startMinute) {
+                                if (now.Second() >= currentChannel.data.weekMode.days[today].startSecond) {
+                                    digitalWrite(channelsPins[i - 1], HIGH);
+                                }
+                            }
+                        }
+                    
+                    }
+
+                    if (digitalRead(channelsPins[i - 1]) == HIGH) {
+                        if (now.Hour() == currentChannel.data.weekMode.days[today].endHour) {
+                            if (now.Minute() == currentChannel.data.weekMode.days[today].endMinute) {
+                                if (now.Second() >= currentChannel.data.weekMode.days[today].endSecond) {
+                                    digitalWrite(channelsPins[i - 1], LOW);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                break;
+               
+
+
+
         }
         
     }

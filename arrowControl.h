@@ -1602,6 +1602,14 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.setCursor(17, 1);
                                 lcd.print(">On");
 
+                                if (currentChannel.data.weekMode.days[_dayIndex].startHour > 23) currentChannel.data.weekMode.days[_dayIndex].startHour = 0;
+                                if (currentChannel.data.weekMode.days[_dayIndex].startMinute > 59) currentChannel.data.weekMode.days[_dayIndex].startMinute = 0;
+                                if (currentChannel.data.weekMode.days[_dayIndex].startSecond > 23) currentChannel.data.weekMode.days[_dayIndex].startSecond = 0;
+
+                                if (currentChannel.data.weekMode.days[_dayIndex].endHour > 23) currentChannel.data.weekMode.days[_dayIndex].endHour = 0;
+                                if (currentChannel.data.weekMode.days[_dayIndex].endMinute > 59) currentChannel.data.weekMode.days[_dayIndex].endMinute = 0;
+                                if (currentChannel.data.weekMode.days[_dayIndex].endSecond > 23) currentChannel.data.weekMode.days[_dayIndex].endSecond = 0;
+
                                 lcd.setCursor(0, 2);
                                 lcd.print("Start: ");
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
@@ -1958,7 +1966,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 			    lcd.setCursor(7, 2);
 			    lcd.print("  ");
 
-                print2digits(currentChannel.data.dayMode.startHour, lcd, 7, 2);
+                print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
                 _oneByte &= 254;
             }
 
@@ -1966,7 +1974,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 			    lcd.setCursor(10, 2);
 			    lcd.print("  ");
 
-			    print2digits(currentChannel.data.dayMode.startMinute, lcd, 10, 2);
+			    print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
                 _oneByte &= 253;
             }
 
@@ -1974,7 +1982,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 			    lcd.setCursor(13, 2);
 			    lcd.print("  ");
 
-			    print2digits(currentChannel.data.dayMode.startSecond, lcd, 13, 2);
+			    print2digits(currentChannel.data.weekMode.days[_dayIndex].startSecond, lcd, 13, 2);
                 _oneByte &= 251;
             }
 
@@ -1982,7 +1990,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 			    lcd.setCursor(5, 3);
 			    lcd.print("  ");
 
-			    print2digits(currentChannel.data.dayMode.endHour, lcd, 5, 3);
+			    print2digits(currentChannel.data.weekMode.days[_dayIndex].endHour, lcd, 5, 3);
                 _oneByte &= 247;
             }
 
@@ -1990,7 +1998,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 			    lcd.setCursor(8, 3);
 			    lcd.print("  ");
 
-			    print2digits(currentChannel.data.dayMode.endMinute, lcd, 8, 3);
+			    print2digits(currentChannel.data.weekMode.days[_dayIndex].endMinute, lcd, 8, 3);
                 _oneByte &= 239;
             }
 
@@ -1998,7 +2006,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 			    lcd.setCursor(11, 3);
 			    lcd.print("  ");
 
-			    print2digits(currentChannel.data.dayMode.endSecond, lcd, 11, 3);
+			    print2digits(currentChannel.data.weekMode.days[_dayIndex].endSecond, lcd, 11, 3);
                 _oneByte &= 223;
             }
 
