@@ -86,18 +86,24 @@ struct Channel {
         } weekMode; // 49
 
         struct {
-            // empty for now
-            //uint32_t timer;
-        } rtcMode;
 
-    } data; // 6  bytes
+            float Kp; // P 
+            float Ki; // I
+            float Kd; // D
+
+            int setPoint; // system set point
+
+            uint8_t pin; // analog pin/feedback pin
+        } PidMode; // 15 bytes
+
+    } data; // 49 bytes
 
     Mode mode {OFF}; // 1 byte
-}; // 49  bytes
+}; // 50  bytes
 
 
 struct Channels {
-    Channel channel[CHANNELS_COUNT]; // 4 * 49 = 196 bytes 
+    Channel channel[CHANNELS_COUNT]; // 4 * 50 = 200 bytes 
 };
 
 

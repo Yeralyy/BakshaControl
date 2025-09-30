@@ -14,7 +14,7 @@ enum FSM : uint8_t {
 enum Mode : uint8_t {
     OFF = 0, // idle state
     TIMER,
-    RTC,
+    PID,
     DAY,  // every day
     WEEK,
     SENSOR,

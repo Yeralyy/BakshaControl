@@ -190,6 +190,15 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                             //currentChannel.data.weekMode.days[6] = {0, 0, 0, 0, 0, 0, 0};
                             break;
 
+                        case PID:
+                            currentChannel.data.PidMode.Kp = 0.0f;
+                            currentChannel.data.PidMode.Ki = 0.0f;
+                            currentChannel.data.PidMode.Kd = 0.0f;
+
+                            currentChannel.data.PidMode.setPoint = 0;
+                            currentChannel.data.PidMode.pin = 14;
+
+
                     }
                 }
             }
@@ -238,9 +247,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.print("Mode: <Timer>");
                                 break;
                             
-                            case RTC:
+                            case PID:
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <RTC>");
+                                lcd.print("Mode: <PID>");
                                 break;
                             
                             case DAY:
@@ -275,9 +284,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.print("Mode: <Timer>");
                                 break;
                             
-                            case RTC:
+                            case PID:
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <RTC>");
+                                lcd.print("Mode: <PID>");
                                 break;
                             
                             case DAY:
@@ -370,9 +379,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.print("Mode: <Timer>");
                                 break;
                             
-                            case RTC:
+                            case PID: 
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <RTC>");
+                                lcd.print("Mode: <PID>");
                                 break;
                             
                             case DAY:
@@ -445,8 +454,8 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
         case DAY:
             if (_index > 6 && _indexFlag == 6) {_changedFlag = 0; _index = 6; }
             break;
-        case RTC:
-            _changedFlag = 0;
+        case PID:
+            if (_index > 8 && _indexFlag == 8) {_changedFlag = 0; _index = 8; }
             break;
 
         case SENSOR:
@@ -735,10 +744,73 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
                 
                 break;
             
-            case RTC:
+            case PID: 
                 switch (_index) {
-                    // pass
+                    case 1:
+                        if (currentChannel.data.PidMode.Kp < 99) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Kp + 5 < 99) currentChannel.data.PidMode.Kp += 5;
+                            else ++currentChannel.data.PidMode.Kp;
+                            _oneByte |= (1 << 0);
+                        }
+                        break;
+                    case 2:
+                        if (currentChannel.data.PidMode.Kp < 99.99f) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Kp + 0.05f < 99.99f) currentChannel.data.PidMode.Kp += 0.05f;
+                            else currentChannel.data.PidMode.Kp += 0.01f;
+                            _oneByte |= (1 << 1);
+                        }
+                        break;
+                    case 3:
+                        if (currentChannel.data.PidMode.Ki < 99) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Ki + 5 < 99) currentChannel.data.PidMode.Ki += 5;
+                            else ++currentChannel.data.PidMode.Ki;
+                            _oneByte |= (1 << 2);
+                        }
+                        break;
+                    case 4:
+                        if (currentChannel.data.PidMode.Ki < 99.99f) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Ki + 0.05f < 99.99f) currentChannel.data.PidMode.Ki += 0.05f;
+                            else currentChannel.data.PidMode.Ki += 0.01f;
+                            _oneByte |= (1 << 3);
+                        }
+                        break;
+                    case 5:
+                        if (currentChannel.data.PidMode.Kd < 99) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Kd + 5 < 99) currentChannel.data.PidMode.Kd += 5;
+                            else ++currentChannel.data.PidMode.Kd;
+                            _oneByte |= (1 << 4);
+                        }
+                        break;
+                    case 6:
+                        if (currentChannel.data.PidMode.Kd < 99.99f) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Kd + 0.05f < 99.99f) currentChannel.data.PidMode.Kd += 0.05f;
+                            else currentChannel.data.PidMode.Kd += 0.01f;
+                            _oneByte |= (1 << 5);
+                        }
+                        break;
+                    case 7:
+                        if (currentChannel.data.PidMode.setPoint < 1023) {
+                            if (enc.isFast() && currentChannel.data.PidMode.setPoint + 50 < 1023) currentChannel.data.PidMode.setPoint += 50;
+                            else ++currentChannel.data.PidMode.setPoint;
+                            _oneByte |= (1 << 6);
+                        }
+
+                        break;
+                    case 8:
+                        ++currentChannel.data.PidMode.pin;
+                        if (currentChannel.data.PidMode.pin < 20 && currentChannel.data.PidMode.pin > 17) {
+                            currentChannel.data.PidMode.pin = 20;
+                        }
+
+                        if (currentChannel.data.PidMode.pin > 21) {
+                            currentChannel.data.PidMode.pin = 21;
+                        }
+                        _oneByte |= 1 << 7; // 3th bit for analog pin change
+                        break;
                 }
+
+                _settingsChanged = 1;
+
                 break;
        }
     }
@@ -957,10 +1029,76 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
 
                 break;
             
-            case RTC:
+            case PID: 
                 switch (_index) {
-                    // pass
+                    case 1:
+                        if (currentChannel.data.PidMode.Kp > 0) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Kp - 5 > 0) currentChannel.data.PidMode.Kp -= 5;
+                            else --currentChannel.data.PidMode.Kp;
+                            _oneByte |= (1 << 0);
+                        } else currentChannel.data.PidMode.Kp = 0;
+                        break;
+                    case 2:
+                        if (currentChannel.data.PidMode.Kp > 0) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Kp - 0.05f > 0) currentChannel.data.PidMode.Kp -= 0.05f;
+                            else currentChannel.data.PidMode.Kp -= 0.01f;
+                            _oneByte |= (1 << 1);
+                        } else currentChannel.data.PidMode.Kp = 0;
+                        break;
+                    case 3:
+                        if (currentChannel.data.PidMode.Ki > 0) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Ki - 5 > 0) currentChannel.data.PidMode.Ki -= 5;
+                            else --currentChannel.data.PidMode.Ki;
+                            _oneByte |= (1 << 2);
+                        } else currentChannel.data.PidMode.Ki = 0;
+                        break;
+                    case 4:
+                        if (currentChannel.data.PidMode.Ki > 0) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Ki - 0.05f > 0) currentChannel.data.PidMode.Ki -= 0.05f;
+                            else currentChannel.data.PidMode.Ki -= 0.01f;
+                            _oneByte |= (1 << 3);
+                        } else currentChannel.data.PidMode.Ki = 0;
+                        break;
+                    case 5:
+                        if (currentChannel.data.PidMode.Kd > 0) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Kd - 5 > 0) currentChannel.data.PidMode.Kd -= 5;
+                            else --currentChannel.data.PidMode.Kd;
+                            _oneByte |= (1 << 4);
+                        } else currentChannel.data.PidMode.Kd = 0;
+                        break;
+                    case 6:
+                        if (currentChannel.data.PidMode.Kd > 0) {
+                            if (enc.isFast() && currentChannel.data.PidMode.Kd - 0.05f > 0) currentChannel.data.PidMode.Kd -= 0.05f;
+                            else currentChannel.data.PidMode.Kd -= 0.01f;
+                            _oneByte |= (1 << 5);
+                        } else currentChannel.data.PidMode.Kd = 0;
+                        break;
+                    
+                    case 7:
+                        if (currentChannel.data.PidMode.setPoint > 0) {
+                            if (enc.isFast() && currentChannel.data.PidMode.setPoint - 50 > 0) currentChannel.data.PidMode.setPoint -= 50;
+                            else --currentChannel.data.PidMode.setPoint;
+                            _oneByte |= (1 << 6);
+                        } else currentChannel.data.PidMode.setPoint = 0;
+                        break;
+
+                    case 8:
+                        --currentChannel.data.PidMode.pin;
+                        if (currentChannel.data.PidMode.pin < 20 && currentChannel.data.PidMode.pin > 17) {
+                            currentChannel.data.PidMode.pin = 17;
+                        }
+
+                        if (currentChannel.data.PidMode.pin < 14) {
+                            currentChannel.data.PidMode.pin = 14;
+                        }
+                        _oneByte |= 1 << 7; // 3th bit for analog pin change
+
+                        break;
+                    
                 }
+                
+                _settingsChanged = 1;
+
                 break;
        }
     }
@@ -1064,9 +1202,9 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
 
                         break;
 
-                    case RTC:
+                    case PID:
                         lcd.setCursor(0, 1);
-                        lcd.print("Mode: <RTC>");
+                        lcd.print("Mode: <PID>");
 
                         break;
 
@@ -1123,18 +1261,55 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print("Left: 00h 00m 00s");
                         break;
 
-                    case RTC:
+                    case PID: 
+
                         lcd.setCursor(0, 0);
-                        lcd.print("<RTC>");
+                        lcd.print("<PID>");
 
                         lcd.setCursor(0, 1);
-                        lcd.print("Start: 00:00.00");
-
+                        lcd.print("Kp: 00.00");
                         lcd.setCursor(0, 2);
-                        lcd.print("End: 00:00.00s");
-                        
+                        lcd.print("Ki: 00.00");
                         lcd.setCursor(0, 3);
-                        lcd.print("Left: 00:00.00s"); // hours:minutes.seconds
+                        lcd.print("Kd: 00.00");
+
+                        lcd.setCursor(11, 1);
+                        lcd.print("Set: ");
+                        lcd.print(currentChannel.data.PidMode.setPoint);
+                        
+                        lcd.setCursor(11, 2);
+                        lcd.print("Pin: A");
+                        
+                        switch (currentChannel.data.PidMode.pin) {
+                            case 14:
+                                lcd.print('0');
+                                break;
+                            case 15:
+                                lcd.print('1');
+                                break;
+                            case 16:
+                                lcd.print('2');
+                                break;
+                            case 17:
+                                lcd.print('3');
+                                break;
+                            case 20:
+                                lcd.print('6');
+                                break;
+                            case 21:
+                                lcd.print('7');
+                                break;
+                            default:
+                                lcd.print('0');
+                                break;
+                        }
+                        
+
+                        lcd.setCursor(11, 3);
+                        lcd.print("Val: ");
+                        lcd.print(analogRead(currentChannel.data.PidMode.pin));
+
+                        
                         break;
 
                     case DAY:
@@ -1347,11 +1522,11 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.print("Mode: <Timer>");
                                 break;
                                     
-                            case RTC:
+                            case PID:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <RTC>");
+                                lcd.print("Mode: <PID>");
                                 break;
                                    
                             case DAY:
@@ -1419,11 +1594,11 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.print(">Mode: <Timer>");
                                 break;
                                     
-                            case RTC:
+                            case PID:
                                 lcd.setCursor(0, 1);
                                 lcd.print("          ");
                                 lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <RTC>");
+                                lcd.print(">Mode: <PID>");
                                 break;
                                    
                             case DAY:
@@ -1467,12 +1642,19 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
         // ==================================== MODES =======================================
         
         case MODES:
-            if (currentChannel.mode == SENSOR && millis() - _tmr > 300) {
-                _tmr = millis();
+            if (millis() - _tmr > 300) {
+                if (currentChannel.mode == SENSOR) {
                 lcd.setCursor(14, 3);
                 lcd.print("      ");
                 lcd.setCursor(14, 3);
+                } else if (currentChannel.mode == PID) {
+                lcd.setCursor(16, 3);
+                lcd.print("    ");
+                lcd.setCursor(16, 3);
+                }
+
                 lcd.print(analogRead(currentChannel.data.sensorMode.pin));
+                _tmr = millis();
             }
 
             if (_changedFlag) {
@@ -1824,8 +2006,77 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                         break;
                         
                     
-                    case RTC:
-                        //
+                    case PID:
+                        switch (_indexFlag) {
+                            case 0:
+                                lcd.setCursor(15, 0);
+                                lcd.print(' ');
+                                break;
+                            case 1:
+                                lcd.setCursor(3, 1);
+                                lcd.print(' ');
+                                break;
+                            case 2:
+                                lcd.setCursor(6, 1);
+                                lcd.print('.');
+                                break;
+                            case 3:
+                                lcd.setCursor(3, 2);
+                                lcd.print(' ');
+                                break;
+                            case 4:
+                                lcd.setCursor(6, 2);
+                                lcd.print('.');
+                                break;
+                            case 5:
+                                lcd.setCursor(3, 3);
+                                lcd.print(' ');
+                                break;
+                            case 6:
+                                lcd.setCursor(6, 3);
+                                lcd.print('.');
+                                break;
+                            case 7:
+                                lcd.setCursor(15, 1);
+                                lcd.print(' ');
+                                break;
+                            case 8:
+                                lcd.setCursor(15, 2);
+                                lcd.print(' ');
+                                break;
+                        }
+
+                        switch (_index) {
+                            case 0:
+                                lcd.setCursor(15, 0);
+                                break;
+                            case 1:
+                                lcd.setCursor(3, 1);
+                                break;
+                            case 2:
+                                lcd.setCursor(6, 1);
+                                break;
+                            case 3:
+                                lcd.setCursor(3, 2);
+                                break;
+                            case 4:
+                                lcd.setCursor(6, 2);
+                                break;
+                            case 5:
+                                lcd.setCursor(3, 3);
+                                break;
+                            case 6:
+                                lcd.setCursor(6, 3);
+                                break;
+                            case 7:
+                                lcd.setCursor(15, 1);
+                                break;
+                            case 8:
+                                lcd.setCursor(15, 2);
+                                break;
+                        }
+                        lcd.print('>');
+
                         break;
                         
                     }
@@ -2044,7 +2295,80 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 
             break;
 
-		case RTC:
+		case PID:
+            if (_oneByte & (1 << 0) || _oneByte & (1 << 1)) {
+                lcd.setCursor(4, 1);
+                lcd.print("     ");
+                //lcd.setCursor(4, 1);
+                printFloat(currentChannel.data.PidMode.Kp, lcd, 4, 1);
+
+                _oneByte &= ~((1 << 0) | (1 << 1));
+            }
+
+            if (_oneByte & (1 << 2) || _oneByte & (1 << 3)) {
+                lcd.setCursor(4, 2);
+                lcd.print("     ");
+                //lcd.setCursor(4, 2);
+                printFloat(currentChannel.data.PidMode.Ki, lcd, 4, 2);
+
+                _oneByte &= ~((1 << 2) | (1 << 3));
+            }
+
+            if (_oneByte & (1 << 4) || _oneByte & (1 << 5)) {
+                lcd.setCursor(4, 3);
+                lcd.print("     ");
+                //lcd.setCursor(4, 3);
+                printFloat(currentChannel.data.PidMode.Kd, lcd, 4, 3);
+
+                _oneByte &= ~((1 << 4) | (1 << 5));
+            }
+            
+            if (_oneByte & (1 << 6)) {
+                lcd.setCursor(16, 1);
+                lcd.print("    ");
+                lcd.setCursor(16, 1);
+                lcd.print(currentChannel.data.PidMode.setPoint);
+
+                _oneByte &= ~(1 << 6);
+            }
+
+            if (_oneByte & (1 << 7)) {
+                lcd.setCursor(17, 2);
+                lcd.print(' ');
+                lcd.setCursor(17, 2);
+                
+                switch (currentChannel.data.PidMode.pin) {
+                    case 14:
+                        lcd.print('0');
+                        break;
+                    case 15:
+                        lcd.print('1');
+                        break;
+                    case 16:
+                        lcd.print('2');
+                        break;
+                    case 17:
+                        lcd.print('3');
+                        break;
+                    case 20:
+                        lcd.print('6');
+                        break;
+                    case 21:
+                        lcd.print('7');
+                        break;
+                    default:
+                        lcd.print('0');
+                        break;
+                }
+                lcd.setCursor(16, 3);
+                lcd.print("    ");
+                lcd.setCursor(16, 3);
+                lcd.print(analogRead(currentChannel.data.PidMode.pin));
+                _oneByte &= ~(1 << 7);                    
+                
+            }
+
+
 			break;
 		
 		}		
