@@ -7,7 +7,7 @@ Credits: Thanks to all libraries authors which i used in this project
 #include "CONFIG.h"
 #include "states.h"
 #include "lib/encMinim.h"
-#include "lib/rtc/RtcDS1302.h" //#include "lib/Timer.h"
+#include "lib/rtc/RtcDS1302.h"
 #include <GyverBME280.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -23,6 +23,7 @@ Credits: Thanks to all libraries authors which i used in this project
 #include "display.h"
 #include "arrowControl.h"
 #include "schedueler.h"
+#include "pid_control.h"
 
 
 #define ONE_SECOND 1000
@@ -30,19 +31,12 @@ Credits: Thanks to all libraries authors which i used in this project
 #define ONE_MINUTE 60000 // 1 minute = 60 sec = 60 000 milliseconds
 #define ONE_HOUR  36000000UL // 1hour = 60 minute = 3600 sec = 36 000 000 milliseconds
 
+#define PID_DT 100 // 100 milliseconds
 
-#define SW 6
-
-
-
-/*
-#define s1 7
-#define s2 6
-#define sw 8
-*/
+#define SW 8
 
 
-encMinim enc(1, 7, 6, 0);
+encMinim enc(1, 7, 8, 0);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 ThreeWire myWire(4, 5, 2);
 RtcDS1302<ThreeWire> rtc(myWire);
@@ -59,6 +53,7 @@ FSM lastState {IDLE};
 
 uint32_t menu_tmr {0}; 
 uint32_t time_tmr {0};
+uint32_t pid_tmr {0};
 
 #if SIM800L
 char buf[BUF_SIZE];
@@ -212,6 +207,11 @@ void loop() {
   RtcDateTime now = rtc.GetDateTime();
   scheduelerTick(now);
 
+  if (millis() - pid_tmr >= PID_DT) {
+    pid_tmr = millis();
+    PIDtick();
+  }
+
 
   switch (state)
   {
@@ -219,14 +219,12 @@ void loop() {
 
       arrow.menuTick(enc, lcd, state);
       if (millis() - time_tmr >= 5000) {
-        time_tmr = millis(); // genius code huh?
+        time_tmr = millis(); 
         #if LOG
         Serial.println(F("Updating Time"));
         #endif
-        //RtcDateTime now = rtc.GetDateTime();
         updateTime(lcd, now);
       } else if (lastState != MAIN_MENU) {
-        //RtcDateTime now = rtc.GetDateTime();
         updateTime(lcd, now);
       }
 

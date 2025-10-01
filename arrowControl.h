@@ -1642,7 +1642,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
         // ==================================== MODES =======================================
         
         case MODES:
-            if (millis() - _tmr > 300) {
+            if (millis() - _tmr > 300 && (currentChannel.mode == SENSOR || currentChannel.mode == PID)) {
                 if (currentChannel.mode == SENSOR) {
                 lcd.setCursor(14, 3);
                 lcd.print("      ");

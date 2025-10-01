@@ -14,7 +14,7 @@
 #define CHANNELS_SIZE 104
 
 
-const uint8_t channelsPins[CHANNELS_COUNT] {8, 9, 10, 11}; // A6 - 20
+const uint8_t channelsPins[CHANNELS_COUNT] {9, 6, 10, 11}; // A6 - 20
 uint32_t timers[CHANNELS_COUNT] {0, 0, 0, 0};
 
 struct Day {
