@@ -1,10 +1,9 @@
 /*
 BakshaControl - garden, plant, greenhouse control system.
 Author: @Yeralyy
-
-Credits: Thanks to all libraries authors which i used in this project
 */
-#include "CONFIG.h"
+
+#include "CONFIG.h"  
 #include "states.h"
 #include "lib/encMinim.h"
 #include "lib/rtc/RtcDS1302.h"
@@ -17,7 +16,6 @@ Credits: Thanks to all libraries authors which i used in this project
 #define BUF_SIZE 64
 #define INTERRUPT_PIN 3
 #endif
-
 
 #include "eeprom_control.h"
 #include "display.h"
@@ -42,6 +40,7 @@ ThreeWire myWire(4, 5, 2);
 RtcDS1302<ThreeWire> rtc(myWire);
 GyverBME280 bme;
 ArrowControl arrow;
+
 #if SIM800L
 SoftwareSerial sim800l(13, 12); // 13 - TX, 12 - RX
 #endif
@@ -73,6 +72,10 @@ void ringing() {
 void setup() {
   #if LOG
   Serial.begin(9600);
+  #endif
+
+  #if ESP32
+  esp32.begin(9600);
   #endif
 
   #if RESET_EEPROM
@@ -138,7 +141,7 @@ void setup() {
   pinMode(16, INPUT);
   pinMode(17, INPUT);
   pinMode(20, INPUT);
-  pinMode(21, INPUT);
+  //pinMode(21, INPUT);
 
 
   state = MAIN_MENU;
@@ -245,5 +248,6 @@ void loop() {
       arrow.modesTick(enc, lcd, state);
       break;
   }
+  
   #endif
 }

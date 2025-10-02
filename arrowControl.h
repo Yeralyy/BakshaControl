@@ -35,10 +35,13 @@ class ArrowControl {
 	    bool _settingsChanged {0};
         bool _modesFlag = {1};
         uint8_t _oneByte {0};
+        uint8_t _switchByte {0};
         Mode _lastMode;
 
         void redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
+        void constrainHelper();
+        void switchHelper(encMinim& enc,  const bool isRight);
         //void constrainModes(void);
 };
 
@@ -93,7 +96,416 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
 
 }
 
+void ArrowControl::constrainHelper() {
+        if (currentChannel.mode != OFF) {
+            if (_index < 0) { _index = 0; _changedFlag = 0; }
+        else if (_index > 4) {_index = 4; _changedFlag = 0; } // constraining
+        } else {
+            if (_index < 0) { _index = 0; _changedFlag = 0; } // if mode is OFF
+            else if (_index == 2 && _indexFlag != 3) {_index = 3; }
+            else if (_index == 2) {_index = 1; }
+            else if (_index > 3) {_index = 3; _changedFlag = 0; }
+        }
 
+}
+
+void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
+    switch (currentChannel.mode) {
+        case TIMER:
+            if (_switchByte & (1 << 0)) {
+                if (currentChannel.data.timerMode.periodHour > 23) currentChannel.data.timerMode.periodHour = 0;
+                if (currentChannel.data.timerMode.periodMinute > 59) currentChannel.data.timerMode.periodMinute = 0;
+                if (currentChannel.data.timerMode.periodSecond > 59) currentChannel.data.timerMode.periodSecond = 0;
+
+                if (currentChannel.data.timerMode.workMinute > 99) currentChannel.data.timerMode.workMinute = 0;
+                if (currentChannel.data.timerMode.workSecond > 59) currentChannel.data.timerMode.workSecond = 0;
+                _switchByte &= ~(1 << 0);
+            }
+
+            if (_switchByte & (1 << 1)) {
+                switch (_index) {
+                    case 1: // period hours
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.timerMode.periodHour += 3;
+                            else ++currentChannel.data.timerMode.periodHour;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.timerMode.periodHour -= 3;
+                            else --currentChannel.data.timerMode.periodHour;
+                        }
+
+                        _oneByte |= 1 << 0; // 0th bit for periodHour
+                        break;
+                    case 2:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.timerMode.periodMinute += 5;
+                            else ++currentChannel.data.timerMode.periodMinute;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.timerMode.periodMinute -= 5;
+                            else --currentChannel.data.timerMode.periodMinute;
+                        }
+                        _oneByte |= 1 << 1; // 1th bit for periodMinute
+                        break;
+                    case 3:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.timerMode.periodSecond += 5;
+                            else ++currentChannel.data.timerMode.periodSecond;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.timerMode.periodSecond -= 5;
+                            else --currentChannel.data.timerMode.periodSecond;
+                        }
+                        _oneByte |= 1 << 2; // 2th bit for periodSecond
+                        break;
+                    
+                    case 4:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.timerMode.workMinute += 5;
+                            else ++currentChannel.data.timerMode.workMinute;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.timerMode.workMinute -= 5;
+                            else --currentChannel.data.timerMode.workMinute;
+                        }
+                        _oneByte |= 1 << 3; // 3th bit for workMinute
+                        break;
+                    case 5:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.timerMode.workSecond += 5;
+                            else ++currentChannel.data.timerMode.workSecond;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.timerMode.workSecond -= 5;
+                            else --currentChannel.data.timerMode.workSecond;
+                        }
+                        _oneByte |= 1 << 4; // 4th bit for workSecond
+                        break;
+                    }
+
+                _switchByte &= ~(1 << 1);
+            }
+
+            break;
+        case SENSOR:
+            if (_switchByte & (1 << 0)) {
+                if (currentChannel.data.sensorMode.threshold < 0 || currentChannel.data.sensorMode.threshold > 1023) currentChannel.data.sensorMode.threshold = 1023;
+                if (currentChannel.data.sensorMode.workMinute > 99) currentChannel.data.sensorMode.workMinute = 0;
+                if (currentChannel.data.sensorMode.workSecond > 59) currentChannel.data.sensorMode.workSecond = 0;
+                currentChannel.data.sensorMode.pin = 14; // A0 default
+                _switchByte &= ~(1 << 0);
+            }
+
+            if (_switchByte & (1 << 1)) {
+                switch (_index) {
+                    case 1:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.sensorMode.threshold += 50;
+                            else ++currentChannel.data.sensorMode.threshold;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.sensorMode.threshold -= 50;
+                            else --currentChannel.data.sensorMode.threshold;
+                        }
+                        _oneByte |= 1 << 0;
+                        break;
+                    case 2:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.sensorMode.workMinute += 5;
+                            else ++currentChannel.data.sensorMode.workMinute;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.sensorMode.workMinute -= 5;
+                            else --currentChannel.data.sensorMode.workMinute;
+                        }
+                        _oneByte |= 1 << 1;
+                        break;
+                    case 3:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.sensorMode.workSecond += 5;
+                            else --currentChannel.data.sensorMode.workSecond;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.sensorMode.workSecond -= 5;
+                            else --currentChannel.data.sensorMode.workSecond;
+                        }
+                        _oneByte |= 1 << 2;
+                        break;
+                    case 4:
+                        if (isRight) ++currentChannel.data.sensorMode.pin;
+                        else --currentChannel.data.sensorMode.pin;
+                        _oneByte |= 1 << 3;
+                        break;
+                }
+               _switchByte &= ~(1 << 1);
+            }
+
+            break;
+        case WEEK:
+            if (_switchByte & (1 << 0)) {
+                currentChannel.data.weekMode.days[0] = {0, 0, 0, 0, 0, 0, 1}; // by default at least 1 day is enabled
+                _switchByte &= ~(1 << 0);
+            }
+
+            if (_switchByte & (1 << 1)) {
+                switch (_index) {
+                     case 1:
+                        if (isRight) ++_dayIndex;
+                        else --_dayIndex;
+                        _changedFlag = 1;
+                        break;
+                    
+                    case 2:
+                        if (isRight) {
+                            if (!currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 0; _oneByte |= (1 << 7); }
+                            else {_changedFlag = 0; }
+                        } else {
+                            if (currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 1; _oneByte |= (1 << 7); }
+                            else {_changedFlag = 0; }
+                        }
+
+                        break;
+                    case 3:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startHour += 3;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].startHour;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startHour -= 3;
+                            else --currentChannel.data.weekMode.days[_dayIndex].startHour;
+                        }
+                        _oneByte |= 1 << 0 ; // 0b01 
+
+                        break;
+                    case 4:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startMinute += 5;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].startMinute;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startMinute -= 5;
+                            else --currentChannel.data.weekMode.days[_dayIndex].startMinute;
+                        }
+                        _oneByte |= 1 << 1;
+                        
+                        break;
+                    case 5:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startSecond += 5;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].startSecond; 
+                        } else {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startSecond -= 5;
+                            else --currentChannel.data.weekMode.days[_dayIndex].startSecond;
+                        }
+                        _oneByte |= 1 << 2; 
+
+                        break;
+                    case 6:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endHour += 3;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].endHour;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endHour -= 3;
+                            else --currentChannel.data.weekMode.days[_dayIndex].endHour;
+                        }
+                        _oneByte |= 1 << 3; // 3th bit for endHour 
+                        
+                        break;
+                    case 7:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endMinute += 5;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].endMinute; 
+                        } else {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endMinute -= 5;
+                            else --currentChannel.data.weekMode.days[_dayIndex].endMinute;
+                        }
+                        _oneByte |= 1 << 4; 
+                        
+                        break;
+                    case 8:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endSecond += 5;
+                            else ++currentChannel.data.weekMode.days[_dayIndex].endSecond; 
+                        } else {
+                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endSecond -= 5;
+                            else --currentChannel.data.weekMode.days[_dayIndex].endSecond;
+                        }
+                        _oneByte |= 1 << 5; 
+
+                        break;
+                }
+                _switchByte &= ~(1 << 1);
+            }
+            
+            break;        
+
+        case DAY:
+            if (_switchByte & (1 << 0)) {
+                if (currentChannel.data.dayMode.startHour > 23) currentChannel.data.dayMode.startHour = 0;
+                if (currentChannel.data.dayMode.startMinute > 59) currentChannel.data.dayMode.startMinute = 0;
+                if (currentChannel.data.dayMode.startSecond > 59) currentChannel.data.dayMode.startSecond = 0;
+                if (currentChannel.data.dayMode.endHour > 23) currentChannel.data.dayMode.endHour = 0;
+                if (currentChannel.data.dayMode.endMinute > 59) currentChannel.data.dayMode.endMinute = 0;
+                if (currentChannel.data.dayMode.endSecond > 59) currentChannel.data.dayMode.endSecond = 0;
+                _switchByte &= ~(1 << 0);
+            }
+
+            if (_switchByte & (1 << 1)) {
+                switch (_index) {
+                     case 1:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.dayMode.startHour += 3;
+                            else ++currentChannel.data.dayMode.startHour;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.dayMode.startHour -= 3;
+                            else --currentChannel.data.dayMode.startHour;
+                        }
+                        _oneByte |= 1 << 0 ; // 0b01 
+                        //0th bit for startHour
+
+                        break;
+                    case 2:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.dayMode.startMinute += 5;
+                            else ++currentChannel.data.dayMode.startMinute;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.dayMode.startMinute -= 5;
+                            else --currentChannel.data.dayMode.startMinute;
+                        }
+                        _oneByte |= 1 << 1;
+                        
+                        break;
+                    case 3:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.dayMode.startSecond += 5;
+                            else ++currentChannel.data.dayMode.startSecond; 
+                        } else {
+                            if (enc.isFast()) currentChannel.data.dayMode.startSecond -= 5;
+                            else --currentChannel.data.dayMode.startSecond; 
+                        }
+                        _oneByte |= 1 << 2; 
+
+                        break;
+                    case 4:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.dayMode.endHour += 3;
+                            else ++currentChannel.data.dayMode.endHour;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.dayMode.endHour += 3;
+                            else ++currentChannel.data.dayMode.endHour;
+                        }
+                        _oneByte |= 1 << 3;// 3th bit for endHour 
+                        break;
+                    case 5:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.dayMode.endMinute += 5;
+                            else ++currentChannel.data.dayMode.endMinute; 
+                        } else {
+                            if (enc.isFast()) currentChannel.data.dayMode.endMinute -= 5;
+                            else --currentChannel.data.dayMode.endMinute; 
+                        }
+                        _oneByte |= 1 << 4; 
+                        break;
+                    case 6:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.dayMode.endSecond += 5;
+                            else ++currentChannel.data.dayMode.endSecond; 
+                        } else {
+                            if (enc.isFast()) currentChannel.data.dayMode.endSecond -= 5;
+                            else --currentChannel.data.dayMode.endSecond; 
+                        }
+                        _oneByte |= 1 << 5; 
+                        break;                
+                }
+                _switchByte &= ~(1 << 1);
+            }
+
+        case PID:
+            if (_switchByte & (1 << 0)) {
+                currentChannel.data.PidMode.Kp = 0.0f;
+                currentChannel.data.PidMode.Ki = 0.0f;
+                currentChannel.data.PidMode.Kd = 0.0f;
+
+                currentChannel.data.PidMode.setPoint = 0;
+                currentChannel.data.PidMode.pin = 14;
+                _switchByte &= ~(1 << 0);
+            }
+
+            if (_switchByte & (1 << 1)) {
+                switch (_index) {
+                    case 1:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.PidMode.Kp += 5;
+                            else ++currentChannel.data.PidMode.Kp;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.PidMode.Kp -= 5;
+                            else --currentChannel.data.PidMode.Kp;
+                        }
+                        _oneByte |= (1 << 0);
+                        break;
+                    case 2:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.PidMode.Kp += 0.05f;
+                            else currentChannel.data.PidMode.Kp += 0.01f;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.PidMode.Kp -= 0.05f;
+                            else currentChannel.data.PidMode.Kp -= 0.01f;
+                        }
+                        _oneByte |= (1 << 1);
+                        break;
+                    case 3:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.PidMode.Ki += 5;
+                            else ++currentChannel.data.PidMode.Ki;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.PidMode.Ki -= 5;
+                            else --currentChannel.data.PidMode.Ki;
+                        }
+                        _oneByte |= (1 << 2);
+                        break;
+                    case 4:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.PidMode.Ki += 0.05f;
+                            else currentChannel.data.PidMode.Ki += 0.01f;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.PidMode.Ki -= 0.05f;
+                            else currentChannel.data.PidMode.Ki -= 0.01f;
+                        }
+                        _oneByte |= (1 << 3);
+                        break;
+                    case 5:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.PidMode.Kd += 5;
+                            else ++currentChannel.data.PidMode.Kd;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.PidMode.Kd -= 5;
+                            else --currentChannel.data.PidMode.Kd;
+                        }
+                        _oneByte |= (1 << 4);
+                        break;
+                    case 6:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.PidMode.Kd += 0.05f;
+                            else currentChannel.data.PidMode.Kd += 0.01f;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.PidMode.Kd -= 0.05f;
+                            else currentChannel.data.PidMode.Kd -= 0.01f;
+                        }
+                        _oneByte |= (1 << 5);
+                        break;
+                    case 7:
+                        if (isRight) {
+                            if (enc.isFast()) currentChannel.data.PidMode.setPoint += 50;
+                            else ++currentChannel.data.PidMode.setPoint;
+                        } else {
+                            if (enc.isFast()) currentChannel.data.PidMode.setPoint -= 50;
+                            else --currentChannel.data.PidMode.setPoint;
+                        }
+                        _oneByte |= (1 << 6);
+
+                        break;
+                    case 8:
+                        if (isRight) ++currentChannel.data.PidMode.pin;
+                        else --currentChannel.data.PidMode.pin;
+                        _oneByte |= 1 << 7; // 3th bit for analog pin change
+                        break;
+                }
+                _switchByte &= ~(1 << 1);
+            }
+            
+            break;    
+    }
+}
 
 void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) {
     redrawDisplay(lcd, state);
@@ -112,16 +524,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 --_index;
                 _changedFlag = 1; }
 
-            if (currentChannel.mode != OFF) {
-                if (_index < 0) { _index = 0; _changedFlag = 0; }
-                else if (_index > 4) {_index = 4; _changedFlag = 0; } // constraining
-            } else {
-                if (_index < 0) { _index = 0; _changedFlag = 0; } // if mode is OFF
-                else if (_index == 2 && _indexFlag != 3) {_index = 3; }
-                else if (_index == 2) {_index = 1; }
-                else if (_index > 3) {_index = 3; _changedFlag = 0; }
-            }
 
+            constrainHelper();
+            
             if (_changedFlag) updateDisplay(lcd, state);    
 
             if (_index == 3 && enc.isClick()) {
@@ -154,52 +559,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 _inChannelFlag = 0;
                 _index = 0;
                 if (_modesFlag && _lastMode != currentChannel.mode) {
-                    switch (currentChannel.mode) {
-                        case TIMER:
-                            if (currentChannel.data.timerMode.periodHour > 23) currentChannel.data.timerMode.periodHour = 0;
-                            if (currentChannel.data.timerMode.periodMinute > 59) currentChannel.data.timerMode.periodMinute = 0;
-                            if (currentChannel.data.timerMode.periodSecond > 59) currentChannel.data.timerMode.periodSecond = 0;
-
-                            if (currentChannel.data.timerMode.workMinute > 99) currentChannel.data.timerMode.workMinute = 0;
-                            if (currentChannel.data.timerMode.workSecond > 59) currentChannel.data.timerMode.workSecond = 0;
-                            break;
-
-                        case SENSOR:
-                            if (currentChannel.data.sensorMode.threshold < 0 || currentChannel.data.sensorMode.threshold > 1023) currentChannel.data.sensorMode.threshold = 1023;
-                            if (currentChannel.data.sensorMode.workMinute > 99) currentChannel.data.sensorMode.workMinute = 0;
-                            if (currentChannel.data.sensorMode.workSecond > 59) currentChannel.data.sensorMode.workSecond = 0;
-                            currentChannel.data.sensorMode.pin = 14; // A0 default
-                            break;
-
-                        case DAY:
-                            if (currentChannel.data.dayMode.startHour > 23) currentChannel.data.dayMode.startHour = 0;
-                            if (currentChannel.data.dayMode.startMinute > 59) currentChannel.data.dayMode.startMinute = 0;
-                            if (currentChannel.data.dayMode.startSecond > 59) currentChannel.data.dayMode.startSecond = 0;
-                            if (currentChannel.data.dayMode.endHour > 23) currentChannel.data.dayMode.endHour = 0;
-                            if (currentChannel.data.dayMode.endMinute > 59) currentChannel.data.dayMode.endMinute = 0;
-                            if (currentChannel.data.dayMode.endSecond > 59) currentChannel.data.dayMode.endSecond = 0;
-                            break;
-                        case WEEK:
-                            currentChannel.data.weekMode.days[0] = {0, 0, 0, 0, 0, 0, 1}; // by default at least 1 day is enabled
-                            //currentChannel.data.weekMode.days[1] = {0, 0, 0, 0, 0, 0, 0};
-                            //currentChannel.data.weekMode.days[2] = {0, 0, 0, 0, 0, 0, 0};
-                            //currentChannel.data.weekMode.days[3] = {0, 0, 0, 0, 0, 0, 0};
-                            //currentChannel.data.weekMode.days[4] = {0, 0, 0, 0, 0, 0, 0};
-
-                            //currentChannel.data.weekMode.days[5] = {0, 0, 0, 0, 0, 0, 0};
-                            //currentChannel.data.weekMode.days[6] = {0, 0, 0, 0, 0, 0, 0};
-                            break;
-
-                        case PID:
-                            currentChannel.data.PidMode.Kp = 0.0f;
-                            currentChannel.data.PidMode.Ki = 0.0f;
-                            currentChannel.data.PidMode.Kd = 0.0f;
-
-                            currentChannel.data.PidMode.setPoint = 0;
-                            currentChannel.data.PidMode.pin = 14;
-
-
-                    }
+                    _switchByte |= (1 << 0);
+                    switchHelper(enc);
                 }
             }
                 
@@ -475,632 +836,11 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
 
 
     if (_index != 0 && enc.isRightH()) {
-        switch (currentChannel.mode) {
-            case TIMER:
-                switch (_index) {
-                    case 1: // period hours
-                        if (currentChannel.data.timerMode.periodHour < 99) {
-                            if (enc.isFast() && currentChannel.data.timerMode.periodHour + 3 < 99) currentChannel.data.timerMode.periodHour += 3;
-                            else ++currentChannel.data.timerMode.periodHour;
-                            _oneByte |= 1 << 0; // 0th bit for periodHour
-                        } else currentChannel.data.timerMode.periodHour = 99;
-                        break;
-                    case 2:
-                        if (currentChannel.data.timerMode.periodMinute < 59) {
-                            if (enc.isFast() && currentChannel.data.timerMode.periodMinute + 5 < 59) currentChannel.data.timerMode.periodMinute += 5;
-                            else ++currentChannel.data.timerMode.periodMinute;
-                            _oneByte |= 1 << 1; // 1th bit for periodMinute
-                        } else currentChannel.data.timerMode.periodMinute = 59;
-                        break;
-                    case 3:
-                        if (currentChannel.data.timerMode.periodSecond < 59) {
-                            if (enc.isFast() && currentChannel.data.timerMode.periodSecond + 5 < 59) currentChannel.data.timerMode.periodSecond += 5;
-                            else ++currentChannel.data.timerMode.periodSecond;
-                            _oneByte |= 1 << 2; // 2th bit for periodSecond
-                        } else currentChannel.data.timerMode.periodSecond = 59;
-                        break;
-                    
-                    case 4:
-                        if (currentChannel.data.timerMode.workMinute < 59) {
-                            if (enc.isFast() && currentChannel.data.timerMode.workMinute + 5 < 59) currentChannel.data.timerMode.workMinute += 5;
-                            else ++currentChannel.data.timerMode.workMinute;
-                            _oneByte |= 1 << 3; // 3th bit for workMinute
-                        } else currentChannel.data.timerMode.workMinute = 59;
-                        break;
-                    case 5:
-                        if (currentChannel.data.timerMode.workSecond < 59) {
-                            if (enc.isFast() && currentChannel.data.timerMode.workSecond + 5 < 59) currentChannel.data.timerMode.workSecond += 5;
-                            else ++currentChannel.data.timerMode.workSecond;
-                            _oneByte |= 1 << 4; // 4th bit for workSecond
-                        } else currentChannel.data.timerMode.workSecond = 59;
-                        break;
-                }
-
-                _settingsChanged = 1;    
-                
-                break;
-            
-            case DAY: // _oneByte as flags for changed sets 
-                switch (_index) {
-                    case 1:
-                        if (currentChannel.data.dayMode.startHour < 23) {
-                        if (enc.isFast() && currentChannel.data.dayMode.startHour + 3 < 23) currentChannel.data.dayMode.startHour += 3;
-                        else ++currentChannel.data.dayMode.startHour;
-                        _oneByte |= 1 << 0 ;} // 0b01 
-                        //0th bit for startHour
-
-                        else currentChannel.data.dayMode.startHour = 23; // 0th hour
-                        break;
-                    case 2:
-                        if (currentChannel.data.dayMode.startMinute >= 59 && currentChannel.data.dayMode.startHour < 23) {
-                        currentChannel.data.dayMode.startMinute = 0;
-                        ++currentChannel.data.dayMode.startHour; 
-                        _oneByte |= (1 << 0) | (1 << 1) ;} // 1th bit for startMinute
-                        
-
-                        else if (currentChannel.data.dayMode.startMinute < 59) {
-                        
-                        if (enc.isFast() && currentChannel.data.dayMode.startMinute + 5 < 59) currentChannel.data.dayMode.startMinute += 5;
-                        else ++currentChannel.data.dayMode.startMinute;
-                        _oneByte |= 1 << 1;
-                        } else currentChannel.data.dayMode.startMinute = 59;
-                        
-                        break;
-                    case 3:
-                        if (currentChannel.data.dayMode.startSecond >= 59 && currentChannel.data.dayMode.startHour < 23 && currentChannel.data.dayMode.startMinute < 59) {
-                            currentChannel.data.dayMode.startSecond = 0;
-                            ++currentChannel.data.dayMode.startMinute;
-                            _oneByte |= (1 << 2) | (1 << 1); // 2th bit for startSecond
-                        } 
-
-                        else if (currentChannel.data.dayMode.startSecond < 59) {
-                            if (enc.isFast() && currentChannel.data.dayMode.startSecond + 5 < 59) currentChannel.data.dayMode.startSecond += 5;
-                            else ++currentChannel.data.dayMode.startSecond; 
-                            _oneByte |= 1 << 2; 
-                        }
-                        else currentChannel.data.dayMode.startSecond = 59;
-
-                        break;
-                    case 4:
-                        if (currentChannel.data.dayMode.endHour < 23) {
-                            if (enc.isFast() && currentChannel.data.dayMode.endHour + 3 < 23) currentChannel.data.dayMode.endHour += 3;
-                            else ++currentChannel.data.dayMode.endHour;
-                            _oneByte |= 1 << 3; }// 3th bit for endHour 
-                        
-                        else currentChannel.data.dayMode.endHour = 23;
-                        break;
-                    case 5:
-                        if (currentChannel.data.dayMode.endMinute >= 59 && currentChannel.data.dayMode.endHour != 23) {
-                            currentChannel.data.dayMode.endMinute = 0;
-                            ++currentChannel.data.dayMode.endHour; 
-                            _oneByte |= (1 << 3) | (1 << 4); // 4th bit for endMinute
-                        }
-
-                        else if (currentChannel.data.dayMode.endMinute < 59) {
-                            if (enc.isFast() && currentChannel.data.dayMode.endMinute + 5 < 59) currentChannel.data.dayMode.endMinute += 5;
-                            else ++currentChannel.data.dayMode.endMinute; 
-                            _oneByte |= 1 << 4; 
-                        }
-                        
-                        break;
-                    case 6:
-                        if (currentChannel.data.dayMode.endSecond >= 59 && currentChannel.data.dayMode.endHour != 23 && currentChannel.data.dayMode.endMinute < 59) {
-                                currentChannel.data.dayMode.endSecond = 0;
-                                ++currentChannel.data.dayMode.endMinute;
-                                _oneByte |= (1 << 4) | (1 << 5); // 5th bit for endSecond
-                        }
-                        else if (currentChannel.data.dayMode.endSecond < 59) {
-                            if (enc.isFast() && currentChannel.data.dayMode.endSecond + 5 < 59) currentChannel.data.dayMode.endSecond += 5;
-                            else ++currentChannel.data.dayMode.endSecond; 
-                            _oneByte |= 1 << 5; 
-                        }
-                        else currentChannel.data.dayMode.endSecond = 0;
-
-                        break;
-                }
-
-                _settingsChanged = 1;
-                break;
-            
-            case SENSOR:
-                switch (_index) {
-                    case 1:
-                        if (currentChannel.data.sensorMode.threshold < 1023) {
-                            if (enc.isFast() && currentChannel.data.sensorMode.threshold + 50 < 1023) currentChannel.data.sensorMode.threshold += 50;
-                            else ++currentChannel.data.sensorMode.threshold;
-                            _oneByte |= 1 << 0;
-                        } else currentChannel.data.sensorMode.threshold = 1023;
-                        break;
-                    case 2:
-                        if (currentChannel.data.sensorMode.workMinute < 99) {
-                            if (enc.isFast() && currentChannel.data.sensorMode.workMinute + 5 < 99) currentChannel.data.sensorMode.workMinute += 5;
-                            else ++currentChannel.data.sensorMode.workMinute;
-                            _oneByte |= 1 << 1;
-                        } else currentChannel.data.sensorMode.workMinute = 99;
-                        break;
-                    case 3:
-                        if (currentChannel.data.sensorMode.workSecond >= 59 && currentChannel.data.sensorMode.workMinute < 99) {
-                            currentChannel.data.sensorMode.workSecond = 0;
-                            ++currentChannel.data.sensorMode.workMinute;
-                            _oneByte |= 1 << 2; // 2th bit forworkMinute
-                            _oneByte |= 1 << 1;
-                            break;
-                        } 
-                        if (currentChannel.data.sensorMode.workSecond < 59) {
-                            if (enc.isFast() && currentChannel.data.sensorMode.workSecond + 5 < 59) currentChannel.data.sensorMode.workSecond += 5;
-                            else ++currentChannel.data.sensorMode.workSecond;
-                            _oneByte |= 1 << 2;
-                        } else currentChannel.data.sensorMode.workSecond = 59;
-
-                        break;
-                    
-                    case 4:
-                        ++currentChannel.data.sensorMode.pin;
-                        if (currentChannel.data.sensorMode.pin < 20 && currentChannel.data.sensorMode.pin > 17) {
-                            currentChannel.data.sensorMode.pin = 20;
-                        }
-
-                        if (currentChannel.data.sensorMode.pin > 21) {
-                            currentChannel.data.sensorMode.pin = 21;
-                        }
-                        _oneByte |= 1 << 3; // 3th bit for analog pin change
-
-                        break;
-
-                }
-
-		        _settingsChanged = 1;	
-                break;
-
-            case WEEK:
-                switch (_index) {
-                    case 1:
-                        if (_dayIndex < 6) {_dayIndexFlag = _dayIndex; ++_dayIndex; }
-                        else {_dayIndexFlag = _dayIndex; _dayIndex = 0; } // overflow
-                        _changedFlag = 1;
-                        break;
-                    
-                    case 2:
-                        if (!currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 1; _oneByte |= (1 << 7); }
-                        else {_changedFlag = 0; }
-
-                        break;
-                    case 3:
-                        if (currentChannel.data.weekMode.days[_dayIndex].startHour < 23) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startHour + 3 < 23) currentChannel.data.weekMode.days[_dayIndex].startHour += 3;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].startHour;
-                            _oneByte |= 1 << 0 ; // 0b01 
-                        } else currentChannel.data.dayMode.startHour = 23; // 0th hour
-
-                        break;
-                    case 4:
-                        if (currentChannel.data.weekMode.days[_dayIndex].startMinute >= 59 && currentChannel.data.weekMode.days[_dayIndex].startHour < 23) {
-                        currentChannel.data.weekMode.days[_dayIndex].startMinute = 0;
-                        ++currentChannel.data.weekMode.days[_dayIndex].startHour; 
-                        _oneByte |= (1 << 0) | (1 << 1); // 1th bit for startMinute
-                        } else if (currentChannel.data.weekMode.days[_dayIndex].startMinute < 59) {
-                        
-                        if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startMinute + 5 < 59) currentChannel.data.weekMode.days[_dayIndex].startMinute += 5;
-                        else ++currentChannel.data.weekMode.days[_dayIndex].startMinute;
-                        _oneByte |= 1 << 1;
-                        } else currentChannel.data.weekMode.days[_dayIndex].startMinute = 59;
-                        
-                        break;
-                    case 5:
-                        if (currentChannel.data.weekMode.days[_dayIndex].startSecond >= 59 && currentChannel.data.weekMode.days[_dayIndex].startHour < 23 && currentChannel.data.weekMode.days[_dayIndex].startMinute < 59) {
-                            currentChannel.data.weekMode.days[_dayIndex].startSecond = 0;
-                            ++currentChannel.data.weekMode.days[_dayIndex].startMinute;
-                            _oneByte |= (1 << 2) | (1 << 1); // 2th bit for startSecond
-                        } 
-
-                        else if (currentChannel.data.weekMode.days[_dayIndex].startSecond < 59) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startSecond + 5 < 59) currentChannel.data.weekMode.days[_dayIndex].startSecond += 5;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].startSecond; 
-                            _oneByte |= 1 << 2; 
-                        }
-                        else currentChannel.data.weekMode.days[_dayIndex].startSecond = 59;
-
-                        break;
-                    case 6:
-                        if (currentChannel.data.weekMode.days[_dayIndex].endHour < 23) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endHour + 5 < 23) currentChannel.data.weekMode.days[_dayIndex].endHour += 3;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].endHour;
-                            _oneByte |= 1 << 3; }// 3th bit for endHour 
-                        
-                        else currentChannel.data.weekMode.days[_dayIndex].endHour = 23;
-                        break;
-                    case 7:
-                        if (currentChannel.data.weekMode.days[_dayIndex].endMinute >= 59 && currentChannel.data.weekMode.days[_dayIndex].endHour != 23) {
-                            currentChannel.data.weekMode.days[_dayIndex].endMinute = 0;
-                            ++currentChannel.data.weekMode.days[_dayIndex].endHour; 
-                            _oneByte |= (1 << 3) | (1 << 4); // 4th bit for endMinute
-                        }
-
-                        else if (currentChannel.data.weekMode.days[_dayIndex].endMinute < 59) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endMinute + 5 < 59) currentChannel.data.weekMode.days[_dayIndex].endMinute += 5;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].endMinute; 
-                            _oneByte |= 1 << 4; 
-                        }
-                        
-                        break;
-                    case 8:
-                        if (currentChannel.data.weekMode.days[_dayIndex].endSecond >= 59 && currentChannel.data.weekMode.days[_dayIndex].endHour != 23 && currentChannel.data.weekMode.days[_dayIndex].endMinute < 59) {
-                                currentChannel.data.weekMode.days[_dayIndex].endSecond = 0;
-                                ++currentChannel.data.weekMode.days[_dayIndex].endMinute;
-                                _oneByte |= (1 << 4) | (1 << 5); // 5th bit for endSecond
-                        }
-                        else if (currentChannel.data.weekMode.days[_dayIndex].endSecond < 59) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endSecond + 5 < 59) currentChannel.data.weekMode.days[_dayIndex].endSecond += 5;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].endSecond; 
-                            _oneByte |= 1 << 5; 
-                        }
-                        else currentChannel.data.weekMode.days[_dayIndex].endSecond = 0;
-
-                        break;
-
-                }
-
-                if (_index > 2 && _index < 9) _settingsChanged = 1;
-                
-                break;
-            
-            case PID: 
-                switch (_index) {
-                    case 1:
-                        if (currentChannel.data.PidMode.Kp < 99) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Kp + 5 < 99) currentChannel.data.PidMode.Kp += 5;
-                            else ++currentChannel.data.PidMode.Kp;
-                            _oneByte |= (1 << 0);
-                        }
-                        break;
-                    case 2:
-                        if (currentChannel.data.PidMode.Kp < 99.99f) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Kp + 0.05f < 99.99f) currentChannel.data.PidMode.Kp += 0.05f;
-                            else currentChannel.data.PidMode.Kp += 0.01f;
-                            _oneByte |= (1 << 1);
-                        }
-                        break;
-                    case 3:
-                        if (currentChannel.data.PidMode.Ki < 99) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Ki + 5 < 99) currentChannel.data.PidMode.Ki += 5;
-                            else ++currentChannel.data.PidMode.Ki;
-                            _oneByte |= (1 << 2);
-                        }
-                        break;
-                    case 4:
-                        if (currentChannel.data.PidMode.Ki < 99.99f) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Ki + 0.05f < 99.99f) currentChannel.data.PidMode.Ki += 0.05f;
-                            else currentChannel.data.PidMode.Ki += 0.01f;
-                            _oneByte |= (1 << 3);
-                        }
-                        break;
-                    case 5:
-                        if (currentChannel.data.PidMode.Kd < 99) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Kd + 5 < 99) currentChannel.data.PidMode.Kd += 5;
-                            else ++currentChannel.data.PidMode.Kd;
-                            _oneByte |= (1 << 4);
-                        }
-                        break;
-                    case 6:
-                        if (currentChannel.data.PidMode.Kd < 99.99f) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Kd + 0.05f < 99.99f) currentChannel.data.PidMode.Kd += 0.05f;
-                            else currentChannel.data.PidMode.Kd += 0.01f;
-                            _oneByte |= (1 << 5);
-                        }
-                        break;
-                    case 7:
-                        if (currentChannel.data.PidMode.setPoint < 1023) {
-                            if (enc.isFast() && currentChannel.data.PidMode.setPoint + 50 < 1023) currentChannel.data.PidMode.setPoint += 50;
-                            else ++currentChannel.data.PidMode.setPoint;
-                            _oneByte |= (1 << 6);
-                        }
-
-                        break;
-                    case 8:
-                        ++currentChannel.data.PidMode.pin;
-                        if (currentChannel.data.PidMode.pin < 20 && currentChannel.data.PidMode.pin > 17) {
-                            currentChannel.data.PidMode.pin = 20;
-                        }
-
-                        if (currentChannel.data.PidMode.pin > 21) {
-                            currentChannel.data.PidMode.pin = 21;
-                        }
-                        _oneByte |= 1 << 7; // 3th bit for analog pin change
-                        break;
-                }
-
-                _settingsChanged = 1;
-
-                break;
-       }
+        switchHelper(enc, 1);
     }
         
     if (_index != 0 && enc.isLeftH()) {
-        switch (currentChannel.mode) {
-            case TIMER:
-                switch (_index) {
-                    case 1: // period hours
-                        if (currentChannel.data.timerMode.periodHour > 0) {
-                            if (enc.isFast() && currentChannel.data.timerMode.periodHour - 3 > 0) currentChannel.data.timerMode.periodHour -= 3;
-                            else --currentChannel.data.timerMode.periodHour;
-                            _oneByte |= 1 << 0; // 0th bit for periodHour
-                        } else currentChannel.data.timerMode.periodHour = 0;
-                        break;
-                    case 2:
-                        if (currentChannel.data.timerMode.periodMinute > 0) {
-                            if (enc.isFast() && currentChannel.data.timerMode.periodMinute - 5 > 0) currentChannel.data.timerMode.periodMinute -= 5;
-                            else --currentChannel.data.timerMode.periodMinute;
-                            _oneByte |= 1 << 1; // 1th bit for periodMinute
-                        } else currentChannel.data.timerMode.periodMinute = 0;
-                        break;
-                    case 3:
-                        if (currentChannel.data.timerMode.periodSecond > 0) {
-                            if (enc.isFast() && currentChannel.data.timerMode.periodSecond - 5 > 0) currentChannel.data.timerMode.periodSecond -= 5;
-                            else --currentChannel.data.timerMode.periodSecond;
-                            _oneByte |= 1 << 2; // 2th bit for periodSecond
-                        } else currentChannel.data.timerMode.periodSecond = 0;
-                        break;
-                    
-                    case 4:
-                        if (currentChannel.data.timerMode.workMinute > 0) {
-                            if (enc.isFast() && currentChannel.data.timerMode.workMinute - 5 > 0) currentChannel.data.timerMode.workMinute -= 5;
-                            else --currentChannel.data.timerMode.workMinute;
-                            _oneByte |= 1 << 3; // 3th bit for workMinute
-                        } else currentChannel.data.timerMode.workMinute = 0;
-                        break;
-                    case 5:
-                        if (currentChannel.data.timerMode.workSecond > 0) {
-                            if (enc.isFast() && currentChannel.data.timerMode.workSecond - 5 > 0) currentChannel.data.timerMode.workSecond -= 5;
-                            else --currentChannel.data.timerMode.workSecond;
-                            _oneByte |= 1 << 4; // 4th bit for workSecond
-                        } else currentChannel.data.timerMode.workSecond = 0;
-                        break;
-                }
-
-                _settingsChanged = 1;
-                break;
-            
-            case DAY: // _oneByte as flags for changed sets
-                switch (_index) {
-                    case 1:
-                        if (currentChannel.data.dayMode.startHour > 0) {
-                            if (enc.isFast() && currentChannel.data.dayMode.startHour - 3 > 0) currentChannel.data.dayMode.startHour -= 3;
-                            else --currentChannel.data.dayMode.startHour;
-                            _oneByte |= 1 << 0; //0th bit for startHour
-                        }
-
-                        else currentChannel.data.dayMode.startHour = 0;
-                        break;
-                    case 2:
-                        if (currentChannel.data.dayMode.startMinute > 0) {
-                            if (enc.isFast() && currentChannel.data.dayMode.startMinute - 5 > 0) currentChannel.data.dayMode.startMinute -= 5;
-                            else --currentChannel.data.dayMode.startMinute;
-                            _oneByte |= 1 << 1; // 1th bit for startMinute
-                        }
-                        else currentChannel.data.dayMode.startMinute = 0; 
-                        break;
-                    case 3:
-                        if (currentChannel.data.dayMode.startSecond > 0) {
-                             if (enc.isFast() && currentChannel.data.dayMode.startSecond - 5 > 0) currentChannel.data.dayMode.startSecond -= 5;
-                            else --currentChannel.data.dayMode.startSecond;
-                            _oneByte |= 1 << 2; // 2th bit for startSecond
-                        }
-                        else currentChannel.data.dayMode.startSecond = 0;
-                        break;
-                    case 4:
-                        if (currentChannel.data.dayMode.endHour > 0) {
-                            if (enc.isFast() && currentChannel.data.dayMode.endHour - 3 > 0) currentChannel.data.dayMode.endHour -= 3;
-                            else --currentChannel.data.dayMode.endHour;
-                            _oneByte |= 1 << 3; // 3th bit for endHour
-                        }
-                        else currentChannel.data.dayMode.endHour = 0;
-                        break;
-                    case 5:
-                        if (currentChannel.data.dayMode.endMinute > 0) {
-                            if (enc.isFast() && currentChannel.data.dayMode.endMinute - 5 > 0) currentChannel.data.dayMode.endMinute -= 5;
-                            else --currentChannel.data.dayMode.endMinute;
-                            _oneByte |= 1 << 4; // 4th bit for endMinute
-                        }
-                        else currentChannel.data.dayMode.endMinute = 0;
-                        break;
-                    case 6:
-                        if (currentChannel.data.dayMode.endSecond > 0) {
-                            if (enc.isFast() && currentChannel.data.dayMode.endSecond - 5 > 0) currentChannel.data.dayMode.endSecond -= 5;
-                            else --currentChannel.data.dayMode.endSecond;
-                            _oneByte |= 1 << 5; // 5th bit for endSecond
-                        }
-                        else currentChannel.data.dayMode.endSecond = 0;
-                        break;
-                }
-
-
-                _settingsChanged = 1;
-
-                break;
-            
-            case SENSOR:
-                switch (_index) {
-                    case 1:
-                        if (currentChannel.data.sensorMode.threshold > 0) {
-                            if (enc.isFast() && currentChannel.data.sensorMode.threshold - 50 > 0) currentChannel.data.sensorMode.threshold -= 50;
-                            else --currentChannel.data.sensorMode.threshold;
-                        } else currentChannel.data.sensorMode.threshold = 0; 
-                        _oneByte |= 1 << 0; // 0th bit for threshold
-                        break;
-                    case 2:
-                        if (currentChannel.data.sensorMode.workMinute > 0) {
-                            if (enc.isFast() && currentChannel.data.sensorMode.threshold - 5 > 0) currentChannel.data.sensorMode.workMinute -= 5;
-                            else --currentChannel.data.sensorMode.workMinute;
-                        } else currentChannel.data.sensorMode.workMinute = 0;
-                        _oneByte |= 1 << 1; // 1th bit for threshold
-                        break;
-                    case 3:
-                        if (currentChannel.data.sensorMode.workSecond > 0) {
-                            if (enc.isFast() && currentChannel.data.sensorMode.workSecond - 5 > 0) currentChannel.data.sensorMode.workSecond -= 5;
-                            else --currentChannel.data.sensorMode.workSecond;
-                        } else currentChannel.data.sensorMode.workSecond = 0;
-                        _oneByte |= 1 << 2; // 2th bit for threshold
-                        break;
-                    case 4:
-                        --currentChannel.data.sensorMode.pin;
-                        if (currentChannel.data.sensorMode.pin < 20 && currentChannel.data.sensorMode.pin > 17) {
-                            currentChannel.data.sensorMode.pin = 17;
-                        }
-
-                        if (currentChannel.data.sensorMode.pin < 14) {
-                            currentChannel.data.sensorMode.pin = 14;
-                        }
-                        _oneByte |= 1 << 3; // 3th bit for analog pin change
-
-                        break;
-                }
-
-
-                _settingsChanged = 1;
-                break;
-
-            case WEEK:
-                switch (_index) {
-                    case 1:
-                        if (_dayIndex > 0) {_dayIndexFlag = _dayIndex; --_dayIndex; }
-                        else {_dayIndexFlag = _dayIndex; _dayIndex = 6; } // overflow
-                        _changedFlag = 1;
-                        break;
-                    
-                    case 2:
-                        if (currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 0; _oneByte |= (1 << 7); }
-                        else {_changedFlag = 0; }
-
-                        break;
-
-                    case 3:
-                        if (currentChannel.data.weekMode.days[_dayIndex].startHour > 0) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startHour - 3 > 0) currentChannel.data.weekMode.days[_dayIndex].startHour -= 3;
-                            else --currentChannel.data.weekMode.days[_dayIndex].startHour;
-                            _oneByte |= 1 << 0; //0th bit for startHour
-                        }
-
-                        else currentChannel.data.weekMode.days[_dayIndex].startHour = 0;
-                        break;
-
-                    case 4:
-                        if (currentChannel.data.weekMode.days[_dayIndex].startMinute > 0) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startMinute - 5 > 0) currentChannel.data.weekMode.days[_dayIndex].startMinute -= 5;
-                            else --currentChannel.data.weekMode.days[_dayIndex].startMinute;
-                            _oneByte |= 1 << 1; // 1th bit for startMinute
-                        }
-                        else currentChannel.data.weekMode.days[_dayIndex].startMinute = 0; 
-                        break;
-                    case 5:
-                        if (currentChannel.data.weekMode.days[_dayIndex].startSecond > 0) {
-                             if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].startSecond - 5 > 0) currentChannel.data.weekMode.days[_dayIndex].startSecond -= 5;
-                            else --currentChannel.data.weekMode.days[_dayIndex].startSecond;
-                            _oneByte |= 1 << 2; // 2th bit for startSecond
-                        }
-                        else currentChannel.data.weekMode.days[_dayIndex].startSecond = 0;
-                        break;
-                    case 6:
-                        if (currentChannel.data.weekMode.days[_dayIndex].endHour > 0) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endHour - 3 > 0) currentChannel.data.weekMode.days[_dayIndex].endHour -= 3;
-                            else --currentChannel.data.weekMode.days[_dayIndex].endHour;
-                            _oneByte |= 1 << 3; // 3th bit for endHour
-                        }
-                        else currentChannel.data.weekMode.days[_dayIndex].endHour = 0;
-                        break;
-                    case 7:
-                        if (currentChannel.data.weekMode.days[_dayIndex].endMinute > 0) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endMinute - 5 > 0) currentChannel.data.weekMode.days[_dayIndex].endMinute -= 5;
-                            else --currentChannel.data.weekMode.days[_dayIndex].endMinute;
-                            _oneByte |= 1 << 4; // 4th bit for endMinute
-                        }
-                        else currentChannel.data.weekMode.days[_dayIndex].endMinute = 0;
-                        break;
-                    case 8:
-                        if (currentChannel.data.weekMode.days[_dayIndex].endSecond > 0) {
-                            if (enc.isFast() && currentChannel.data.weekMode.days[_dayIndex].endSecond - 5 > 0) currentChannel.data.weekMode.days[_dayIndex].endSecond -= 5;
-                            else --currentChannel.data.weekMode.days[_dayIndex].endSecond;
-                            _oneByte |= 1 << 5; // 5th bit for endSecond
-                        }
-                        else currentChannel.data.weekMode.days[_dayIndex].endSecond = 0;
-                        break;
-                }
-
-                if (_index > 2 && _index < 9) _settingsChanged = 1;
-
-                break;
-            
-            case PID: 
-                switch (_index) {
-                    case 1:
-                        if (currentChannel.data.PidMode.Kp > 0) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Kp - 5 > 0) currentChannel.data.PidMode.Kp -= 5;
-                            else --currentChannel.data.PidMode.Kp;
-                            _oneByte |= (1 << 0);
-                        } else currentChannel.data.PidMode.Kp = 0;
-                        break;
-                    case 2:
-                        if (currentChannel.data.PidMode.Kp > 0) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Kp - 0.05f > 0) currentChannel.data.PidMode.Kp -= 0.05f;
-                            else currentChannel.data.PidMode.Kp -= 0.01f;
-                            _oneByte |= (1 << 1);
-                        } else currentChannel.data.PidMode.Kp = 0;
-                        break;
-                    case 3:
-                        if (currentChannel.data.PidMode.Ki > 0) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Ki - 5 > 0) currentChannel.data.PidMode.Ki -= 5;
-                            else --currentChannel.data.PidMode.Ki;
-                            _oneByte |= (1 << 2);
-                        } else currentChannel.data.PidMode.Ki = 0;
-                        break;
-                    case 4:
-                        if (currentChannel.data.PidMode.Ki > 0) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Ki - 0.05f > 0) currentChannel.data.PidMode.Ki -= 0.05f;
-                            else currentChannel.data.PidMode.Ki -= 0.01f;
-                            _oneByte |= (1 << 3);
-                        } else currentChannel.data.PidMode.Ki = 0;
-                        break;
-                    case 5:
-                        if (currentChannel.data.PidMode.Kd > 0) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Kd - 5 > 0) currentChannel.data.PidMode.Kd -= 5;
-                            else --currentChannel.data.PidMode.Kd;
-                            _oneByte |= (1 << 4);
-                        } else currentChannel.data.PidMode.Kd = 0;
-                        break;
-                    case 6:
-                        if (currentChannel.data.PidMode.Kd > 0) {
-                            if (enc.isFast() && currentChannel.data.PidMode.Kd - 0.05f > 0) currentChannel.data.PidMode.Kd -= 0.05f;
-                            else currentChannel.data.PidMode.Kd -= 0.01f;
-                            _oneByte |= (1 << 5);
-                        } else currentChannel.data.PidMode.Kd = 0;
-                        break;
-                    
-                    case 7:
-                        if (currentChannel.data.PidMode.setPoint > 0) {
-                            if (enc.isFast() && currentChannel.data.PidMode.setPoint - 50 > 0) currentChannel.data.PidMode.setPoint -= 50;
-                            else --currentChannel.data.PidMode.setPoint;
-                            _oneByte |= (1 << 6);
-                        } else currentChannel.data.PidMode.setPoint = 0;
-                        break;
-
-                    case 8:
-                        --currentChannel.data.PidMode.pin;
-                        if (currentChannel.data.PidMode.pin < 20 && currentChannel.data.PidMode.pin > 17) {
-                            currentChannel.data.PidMode.pin = 17;
-                        }
-
-                        if (currentChannel.data.PidMode.pin < 14) {
-                            currentChannel.data.PidMode.pin = 14;
-                        }
-                        _oneByte |= 1 << 7; // 3th bit for analog pin change
-
-                        break;
-                    
-                }
-                
-                _settingsChanged = 1;
-
-                break;
-       }
+        switchHelper(enc, 0);
     }
 
 
@@ -1519,35 +1259,35 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Timer>");
+                                lcd.print("Mode:><Timer>");
                                 break;
                                     
                             case PID:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <PID>");
+                                lcd.print("Mode:><PID>");
                                 break;
                                    
                             case DAY:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Day>");
+                                lcd.print("Mode:><Day>");
                                 break;
 
                             case SENSOR:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Sensor>");
+                                lcd.print("Mode:><Sensor>");
                                 break;
                             
                             case WEEK:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Week>");
+                                lcd.print("Mode:><Week>");
                                 break;
                             }
                         break;
@@ -1591,35 +1331,35 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.setCursor(0, 1);
                                 lcd.print("             ");
                                 lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Timer>");
+                                lcd.print("Mode:><Timer>");
                                 break;
                                     
                             case PID:
                                 lcd.setCursor(0, 1);
                                 lcd.print("          ");
                                 lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <PID>");
+                                lcd.print("Mode:><PID>");
                                 break;
                                    
                             case DAY:
                                 lcd.setCursor(0, 1);
                                 lcd.print("              ");
                                 lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Day>");
+                                lcd.print("Mode:><Day>");
                                 break;
                             
                             case SENSOR:
                                 lcd.setCursor(0, 1);
                                 lcd.print("              ");
                                 lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Sensor>");
+                                lcd.print("Mode:><Sensor>");
                                 break;
 
                             case WEEK:
                                 lcd.setCursor(0, 1);                            
                                 lcd.print("              ");
                                 lcd.setCursor(0, 1);                            
-                                lcd.print(">Mode: <Week>");
+                                lcd.print("Mode:><Week>");
                                 break;
 
                             }
