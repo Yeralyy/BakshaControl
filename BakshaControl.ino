@@ -34,7 +34,7 @@ Author: @Yeralyy
 #define SW 8
 
 
-encMinim enc(1, 7, 8, 0);
+encMinim enc(12, 7, 8, 0);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 ThreeWire myWire(4, 5, 2);
 RtcDS1302<ThreeWire> rtc(myWire);
@@ -141,7 +141,7 @@ void setup() {
   pinMode(16, INPUT);
   pinMode(17, INPUT);
   pinMode(20, INPUT);
-  //pinMode(21, INPUT);
+  pinMode(21, INPUT);
 
 
   state = MAIN_MENU;

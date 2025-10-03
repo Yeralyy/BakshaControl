@@ -125,55 +125,28 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
             if (_switchByte & (1 << 1)) {
                 switch (_index) {
                     case 1: // period hours
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.timerMode.periodHour += 3;
-                            else ++currentChannel.data.timerMode.periodHour;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.timerMode.periodHour -= 3;
-                            else --currentChannel.data.timerMode.periodHour;
-                        }
-
+                        settingsHandle(enc, currentChannel.data.timerMode.periodHour, 0, 23, 3, isRight);
+                        
                         _oneByte |= 1 << 0; // 0th bit for periodHour
                         break;
                     case 2:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.timerMode.periodMinute += 5;
-                            else ++currentChannel.data.timerMode.periodMinute;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.timerMode.periodMinute -= 5;
-                            else --currentChannel.data.timerMode.periodMinute;
-                        }
+                        settingsHandle(enc, currentChannel.data.timerMode.periodMinute, 0, 59, 5, isRight);
+
                         _oneByte |= 1 << 1; // 1th bit for periodMinute
                         break;
                     case 3:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.timerMode.periodSecond += 5;
-                            else ++currentChannel.data.timerMode.periodSecond;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.timerMode.periodSecond -= 5;
-                            else --currentChannel.data.timerMode.periodSecond;
-                        }
+                        settingsHandle(enc, currentChannel.data.timerMode.periodSecond, 0, 59, 5, isRight);
+
                         _oneByte |= 1 << 2; // 2th bit for periodSecond
                         break;
                     
                     case 4:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.timerMode.workMinute += 5;
-                            else ++currentChannel.data.timerMode.workMinute;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.timerMode.workMinute -= 5;
-                            else --currentChannel.data.timerMode.workMinute;
-                        }
+                        settingsHandle(enc, currentChannel.data.timerMode.workMinute, 0, 99, 5, isRight);
+                        
                         _oneByte |= 1 << 3; // 3th bit for workMinute
                         break;
                     case 5:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.timerMode.workSecond += 5;
-                            else ++currentChannel.data.timerMode.workSecond;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.timerMode.workSecond -= 5;
-                            else --currentChannel.data.timerMode.workSecond;
-                        }
+                        settingsHandle(enc, currentChannel.data.timerMode.workSecond, 0, 59, 5, isRight);
                         _oneByte |= 1 << 4; // 4th bit for workSecond
                         break;
                     }
@@ -194,38 +167,21 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
             if (_switchByte & (1 << 1)) {
                 switch (_index) {
                     case 1:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.sensorMode.threshold += 50;
-                            else ++currentChannel.data.sensorMode.threshold;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.sensorMode.threshold -= 50;
-                            else --currentChannel.data.sensorMode.threshold;
-                        }
+                        settingsHandle(enc, currentChannel.data.sensorMode.threshold, 0, 1023, 50, isRight);
                         _oneByte |= 1 << 0;
                         break;
                     case 2:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.sensorMode.workMinute += 5;
-                            else ++currentChannel.data.sensorMode.workMinute;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.sensorMode.workMinute -= 5;
-                            else --currentChannel.data.sensorMode.workMinute;
-                        }
+                        settingsHandle(enc, currentChannel.data.sensorMode.workMinute, 0, 99, 10, isRight);
                         _oneByte |= 1 << 1;
                         break;
                     case 3:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.sensorMode.workSecond += 5;
-                            else --currentChannel.data.sensorMode.workSecond;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.sensorMode.workSecond -= 5;
-                            else --currentChannel.data.sensorMode.workSecond;
-                        }
+                        settingsHandle(enc, currentChannel.data.sensorMode.workSecond, 0, 59, 5, isRight);
                         _oneByte |= 1 << 2;
                         break;
                     case 4:
                         if (isRight) ++currentChannel.data.sensorMode.pin;
                         else --currentChannel.data.sensorMode.pin;
+                        pinConstrain(currentChannel.data.sensorMode.pin, isRight);
                         _oneByte |= 1 << 3;
                         break;
                 }
@@ -258,68 +214,32 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
 
                         break;
                     case 3:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startHour += 3;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].startHour;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startHour -= 3;
-                            else --currentChannel.data.weekMode.days[_dayIndex].startHour;
-                        }
+                        settingsHandle(enc, currentChannel.data.weekMode.days[_dayIndex].startHour, 0, 23, 3, isRight);
                         _oneByte |= 1 << 0 ; // 0b01 
 
                         break;
                     case 4:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startMinute += 5;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].startMinute;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startMinute -= 5;
-                            else --currentChannel.data.weekMode.days[_dayIndex].startMinute;
-                        }
+                        settingsHandle(enc, currentChannel.data.weekMode.days[_dayIndex].startMinute, 0, 59, 5, isRight);
                         _oneByte |= 1 << 1;
                         
                         break;
                     case 5:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startSecond += 5;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].startSecond; 
-                        } else {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].startSecond -= 5;
-                            else --currentChannel.data.weekMode.days[_dayIndex].startSecond;
-                        }
+                        settingsHandle(enc, currentChannel.data.weekMode.days[_dayIndex].startSecond, 0, 59, 5, isRight);
                         _oneByte |= 1 << 2; 
 
                         break;
                     case 6:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endHour += 3;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].endHour;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endHour -= 3;
-                            else --currentChannel.data.weekMode.days[_dayIndex].endHour;
-                        }
+                        settingsHandle(enc, currentChannel.data.weekMode.days[_dayIndex].endHour, 0, 23, 3, isRight);
                         _oneByte |= 1 << 3; // 3th bit for endHour 
                         
                         break;
                     case 7:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endMinute += 5;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].endMinute; 
-                        } else {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endMinute -= 5;
-                            else --currentChannel.data.weekMode.days[_dayIndex].endMinute;
-                        }
+                        settingsHandle(enc, currentChannel.data.weekMode.days[_dayIndex].endMinute, 0, 59, 5, isRight);
                         _oneByte |= 1 << 4; 
                         
                         break;
                     case 8:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endSecond += 5;
-                            else ++currentChannel.data.weekMode.days[_dayIndex].endSecond; 
-                        } else {
-                            if (enc.isFast()) currentChannel.data.weekMode.days[_dayIndex].endSecond -= 5;
-                            else --currentChannel.data.weekMode.days[_dayIndex].endSecond;
-                        }
+                        settingsHandle(enc, currentChannel.data.weekMode.days[_dayIndex].endSecond, 0, 59, 5, isRight);
                         _oneByte |= 1 << 5; 
 
                         break;
@@ -343,67 +263,31 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
             if (_switchByte & (1 << 1)) {
                 switch (_index) {
                      case 1:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.dayMode.startHour += 3;
-                            else ++currentChannel.data.dayMode.startHour;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.dayMode.startHour -= 3;
-                            else --currentChannel.data.dayMode.startHour;
-                        }
+                        settingsHandle(enc, currentChannel.data.dayMode.startHour, 0, 23, 3, isRight);
                         _oneByte |= 1 << 0 ; // 0b01 
                         //0th bit for startHour
 
                         break;
                     case 2:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.dayMode.startMinute += 5;
-                            else ++currentChannel.data.dayMode.startMinute;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.dayMode.startMinute -= 5;
-                            else --currentChannel.data.dayMode.startMinute;
-                        }
+                        settingsHandle(enc, currentChannel.data.dayMode.startMinute, 0, 59, 5, isRight);
                         _oneByte |= 1 << 1;
                         
                         break;
                     case 3:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.dayMode.startSecond += 5;
-                            else ++currentChannel.data.dayMode.startSecond; 
-                        } else {
-                            if (enc.isFast()) currentChannel.data.dayMode.startSecond -= 5;
-                            else --currentChannel.data.dayMode.startSecond; 
-                        }
+                        settingsHandle(enc, currentChannel.data.dayMode.startSecond, 0, 59, 5, isRight);
                         _oneByte |= 1 << 2; 
 
                         break;
                     case 4:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.dayMode.endHour += 3;
-                            else ++currentChannel.data.dayMode.endHour;
-                        } else {
-                            if (enc.isFast()) currentChannel.data.dayMode.endHour += 3;
-                            else ++currentChannel.data.dayMode.endHour;
-                        }
+                        settingsHandle(enc, currentChannel.data.dayMode.endHour, 0, 23, 3, isRight);
                         _oneByte |= 1 << 3;// 3th bit for endHour 
                         break;
                     case 5:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.dayMode.endMinute += 5;
-                            else ++currentChannel.data.dayMode.endMinute; 
-                        } else {
-                            if (enc.isFast()) currentChannel.data.dayMode.endMinute -= 5;
-                            else --currentChannel.data.dayMode.endMinute; 
-                        }
+                        settingsHandle(enc, currentChannel.data.dayMode.endMinute, 0, 59, 5, isRight);
                         _oneByte |= 1 << 4; 
                         break;
                     case 6:
-                        if (isRight) {
-                            if (enc.isFast()) currentChannel.data.dayMode.endSecond += 5;
-                            else ++currentChannel.data.dayMode.endSecond; 
-                        } else {
-                            if (enc.isFast()) currentChannel.data.dayMode.endSecond -= 5;
-                            else --currentChannel.data.dayMode.endSecond; 
-                        }
+                        settingsHandle(enc, currentChannel.data.dayMode.endSecond, 0, 59, 5, isRight);
                         _oneByte |= 1 << 5; 
                         break;                
                 }
@@ -497,9 +381,13 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
                     case 8:
                         if (isRight) ++currentChannel.data.PidMode.pin;
                         else --currentChannel.data.PidMode.pin;
+
+                        pinConstrain(currentChannel.data.PidMode.pin, isRight);
+
                         _oneByte |= 1 << 7; // 3th bit for analog pin change
                         break;
                 }
+                
                 _switchByte &= ~(1 << 1);
             }
             
@@ -836,10 +724,15 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
 
 
     if (_index != 0 && enc.isRightH()) {
+        _switchByte |= (1 << 1);
+        _settingsChanged = 1;
         switchHelper(enc, 1);
     }
         
+        switchHelper(enc, 1);
     if (_index != 0 && enc.isLeftH()) {
+        _switchByte |= (1 << 1);
+        _settingsChanged = 1;
         switchHelper(enc, 0);
     }
 
@@ -1259,35 +1152,35 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><Timer>");
+                                lcd.print("Mode: <Timer>");
                                 break;
                                     
                             case PID:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><PID>");
+                                lcd.print("Mode: <PID>");
                                 break;
                                    
                             case DAY:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><Day>");
+                                lcd.print("Mode: <Day>");
                                 break;
 
                             case SENSOR:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><Sensor>");
+                                lcd.print("Mode: <Sensor>");
                                 break;
                             
                             case WEEK:
                                 lcd.setCursor(0, 1);
                                 lcd.print("                    ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><Week>");
+                                lcd.print("Mode: <Week>");
                                 break;
                             }
                         break;
@@ -1331,35 +1224,35 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.setCursor(0, 1);
                                 lcd.print("             ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><Timer>");
+                                lcd.print(">Mode: <Timer>");
                                 break;
                                     
                             case PID:
                                 lcd.setCursor(0, 1);
                                 lcd.print("          ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><PID>");
+                                lcd.print(">Mode: <PID>");
                                 break;
                                    
                             case DAY:
                                 lcd.setCursor(0, 1);
                                 lcd.print("              ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><Day>");
+                                lcd.print(">Mode: <Day>");
                                 break;
                             
                             case SENSOR:
                                 lcd.setCursor(0, 1);
                                 lcd.print("              ");
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode:><Sensor>");
+                                lcd.print(">Mode: <Sensor>");
                                 break;
 
                             case WEEK:
                                 lcd.setCursor(0, 1);                            
                                 lcd.print("              ");
                                 lcd.setCursor(0, 1);                            
-                                lcd.print("Mode:><Week>");
+                                lcd.print(">Mode: <Week>");
                                 break;
 
                             }
