@@ -17,6 +17,10 @@ Author: @Yeralyy
 #define INTERRUPT_PIN 3
 #endif
 
+#if ESP32
+#include <SoftwareSerial.h>
+#endif
+
 #include "eeprom_control.h"
 #include "display.h"
 #include "arrowControl.h"
@@ -34,7 +38,7 @@ Author: @Yeralyy
 #define SW 8
 
 
-encMinim enc(12, 7, 8, 0);
+encMinim enc(1, 7, 8, 0);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 ThreeWire myWire(4, 5, 2);
 RtcDS1302<ThreeWire> rtc(myWire);
@@ -43,6 +47,10 @@ ArrowControl arrow;
 
 #if SIM800L
 SoftwareSerial sim800l(13, 12); // 13 - TX, 12 - RX
+#endif
+
+#if ESP32
+SoftwareSerial esp32(13, 12); // 13 - TX, 12 - RX
 #endif
 
 
@@ -75,7 +83,8 @@ void setup() {
   #endif
 
   #if ESP32
-  esp32.begin(9600);
+  esp32.begin(115200);
+  Serial.begin(115200);
   #endif
 
   #if RESET_EEPROM
@@ -93,7 +102,6 @@ void setup() {
   
   // attaching 3th pin for interrupt RING
   attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), ringing, RISING);
-  //attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), halting, FALLING);
   #endif
 
   lcd.init(); // display
@@ -109,9 +117,6 @@ void setup() {
   RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
 
   if (!rtc.IsDateTimeValid()) {
-    #if LOG
-    //Serial.println("Rtc lost confidence in the DateTime!");
-    #endif
     rtc.SetDateTime(compiled);
   }
 
@@ -248,6 +253,44 @@ void loop() {
       arrow.modesTick(enc, lcd, state);
       break;
   }
+
+  #if ESP32
+  
+  /* ARDUINO-ESP32 communication protocol */
+
+  /*
+  API:  
+
+  Get:<key><request> e.g: gt (get temperature)
+  
+  
+  */
+
+  if (esp32.available() > 1) {
+    char key = esp32.read(); // key value
+    char request = esp32.read(); // requset value
+    
+    if (key == 'g') {
+      switch (request) {
+        case 't': // temperature
+          esp32.write('G')
+          esp32.print(bme.readTemperature());
+          break;
+        case 'h': // humidity
+          esp32.write('G')
+          esp32.print(bme.readHumidity());
+          break;
+        case 'p': // pressure
+          esp32.write('G')
+          esp32.print(bme.readHumidity());
+          break;
+      }
+    }
+
+  }
+  
+  #endif
+
   
   #endif
 }
