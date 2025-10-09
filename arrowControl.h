@@ -42,6 +42,7 @@ class ArrowControl {
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void constrainHelper();
         void switchHelper(encMinim& enc,  const bool isRight);
+        //void calculateLeft(LiquidCrystal_I2C& lcd, FSM& state);
         //void constrainModes(void);
 };
 
@@ -192,6 +193,12 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
         case WEEK:
             if (_switchByte & (1 << 0)) {
                 currentChannel.data.weekMode.days[0] = {0, 0, 0, 0, 0, 0, 1}; // by default at least 1 day is enabled
+                currentChannel.data.weekMode.days[1] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
+                currentChannel.data.weekMode.days[2] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
+                currentChannel.data.weekMode.days[3] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
+                currentChannel.data.weekMode.days[4] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
+                currentChannel.data.weekMode.days[5] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
+                currentChannel.data.weekMode.days[6] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
                 _switchByte &= ~(1 << 0);
             }
 
@@ -200,15 +207,19 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
                      case 1:
                         if (isRight) ++_dayIndex;
                         else --_dayIndex;
+
+                        if (_dayIndex > 6) _dayIndex = 0;
+                        else if (_dayIndex < 0) _dayIndex = 6;
+
                         _changedFlag = 1;
                         break;
                     
                     case 2:
                         if (isRight) {
-                            if (!currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 0; _oneByte |= (1 << 7); }
+                            if (!currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 1; _oneByte |= (1 << 7); }
                             else {_changedFlag = 0; }
                         } else {
-                            if (currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 1; _oneByte |= (1 << 7); }
+                            if (currentChannel.data.weekMode.days[_dayIndex].enabled) { _changedFlag = 1; currentChannel.data.weekMode.days[_dayIndex].enabled = 0; _oneByte |= (1 << 7); }
                             else {_changedFlag = 0; }
                         }
 
@@ -2080,3 +2091,14 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
        break;
     }
 }
+
+/*
+void ArrowControl::calculateLeft(LiquidCrystal_I2C& lcd, FSM& state) {
+    switch (state) {
+        case TIMER:
+
+            break;
+
+    }
+};
+*/
