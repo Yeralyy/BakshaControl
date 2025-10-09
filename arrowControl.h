@@ -99,12 +99,12 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
 void ArrowControl::constrainHelper() {
         if (currentChannel.mode != OFF) {
             if (_index < 0) { _index = 0; _changedFlag = 0; }
-        else if (_index > 4) {_index = 4; _changedFlag = 0; } // constraining
+            else if (_index > 5) {_index = 5; _changedFlag = 0; } // constraining
         } else {
             if (_index < 0) { _index = 0; _changedFlag = 0; } // if mode is OFF
-            else if (_index == 2 && _indexFlag != 3) {_index = 3; }
-            else if (_index == 2) {_index = 1; }
-            else if (_index > 3) {_index = 3; _changedFlag = 0; }
+            else if (_index == 2 && _indexFlag != 4) {_index = 4; }
+            else if (_index == 3) {_index = 1; }
+            else if (_index > 4) {_index = 4; _changedFlag = 0; }
         }
 
 }
@@ -398,6 +398,7 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
 void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) {
     redrawDisplay(lcd, state);
 
+
         // ==================================== ARROW TRACKING ==============================
 
         if (_inChannelFlag) {
@@ -417,7 +418,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
             
             if (_changedFlag) updateDisplay(lcd, state);    
 
-            if (_index == 3 && enc.isClick()) {
+            if (_index == 4 && enc.isClick()) {
                 #if LOG
                 Serial.println(F("state->MAIN_MENU"));
                 #endif
@@ -428,7 +429,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 _index = 0;
 
 
-                if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], LOW);
+                if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], !uint8_t(currentChannel.relayMode));
                 // saving current channel settings
                 if (_channelFlag) {
                     putChannel(_count, currentChannel);
@@ -441,6 +442,11 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 Serial.println(F("state->MODES"));
                 #endif
                 lcd.clear();
+
+                if (_channelFlag) {
+                    putChannel(_count, currentChannel);
+                    _channelFlag = 0;
+                }
                 
                 state = MODES;
                 _first = 1;
@@ -458,7 +464,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                     case 0: // 
                         /* Saving Channel settings*/
 
-                        if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], LOW);
+                        if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], !uint8_t(currentChannel.relayMode));
 
                         if (_channelFlag) {
                             putChannel(_count, currentChannel);
@@ -470,6 +476,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         _inChannelFlag = 0; 
 
                         lcd.setCursor(0, 1);
+                        lcd.print("                   ");
+                        lcd.setCursor(0, 2);
                         lcd.print("                   ");
 
                         _channelFlag = 1;
@@ -509,6 +517,10 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                                 lcd.setCursor(0, 1);
                                 lcd.print("Mode: <Sensor>");
                         }
+
+                        lcd.setCursor(0, 2);
+                        if (currentChannel.relayMode == TO_ON) lcd.print("Direction: Off-On");
+                        else lcd.print("Direction: On-Off");
                         
                         _changedFlag = 1;
 
@@ -562,9 +574,19 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
                         _channelFlag = 1;
                         
-
                         break;
 
+                    case 3:
+                        if (currentChannel.relayMode == TO_OFF) {
+                            currentChannel.relayMode = TO_ON; 
+                            lcd.setCursor(10, 2);
+                            lcd.print("          ");
+                            lcd.setCursor(10, 2);
+                            lcd.print(">Off-On");
+
+                            _channelFlag = 1;
+                        }
+                        break;
 
                     }
                 }
@@ -573,7 +595,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 switch (_index) {
                     case 0:
                         /* Saving channel settings in EEPROM */
-                        if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], LOW);
+                        if (currentChannel.mode == OFF) digitalWrite(channelsPins[_count - 1], !uint8_t(currentChannel.relayMode));
 
                         if (_channelFlag) { 
                             putChannel(_count, currentChannel);
@@ -586,6 +608,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         _changedFlag = 1;
 
                         lcd.setCursor(0, 1);
+                        lcd.print("                   ");
+                        lcd.setCursor(0, 2);
                         lcd.print("                   ");
 
                         _channelFlag = 1;
@@ -608,6 +632,9 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         lcd.setCursor(0, 1);
                         lcd.print("                   "); // clearing Mode
 
+                        lcd.setCursor(0, 2);
+                        lcd.print("                   ");
+
                         _channelFlag = 1;
                         
                         break;
@@ -625,27 +652,27 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         switch (currentChannel.mode) {
                             case TIMER:
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Timer>");
+                                lcd.print(">Mode: <Timer>");
                                 break;
                             
                             case PID: 
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <PID>");
+                                lcd.print(">Mode: <PID>");
                                 break;
                             
                             case DAY:
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Day>");
+                                lcd.print(">Mode: <Day>");
                                 break;
                             
                             case SENSOR:
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Sensor>"); 
+                                lcd.print(">Mode: <Sensor>"); 
                                 break;
 
                             case WEEK:
                                 lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Week>");
+                                lcd.print(">Mode: <Week>");
                                 break;
 
                             default:
@@ -658,15 +685,20 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         _channelFlag = 1;
                         
                         break;
-
-
-
+                    
+                        case 3:
+                        if (currentChannel.relayMode == TO_ON) {
+                            currentChannel.relayMode = TO_OFF; 
+                            lcd.setCursor(10, 2);
+                            lcd.print("          ");
+                            lcd.setCursor(10, 2);
+                            lcd.print(">On-Off");
+                            _channelFlag = 1;
+                        }
+                        break;
                 }
             }
         } 
-
-        if (enc.isRightH() && !_inChannelFlag) {++_count; _first = 1; _changedFlag = 1; }
-        if (enc.isLeftH() && !_inChannelFlag) {--_count; _first = 1; _changedFlag = 1; }
 
         if (enc.isClick()) { 
             _inChannelFlag = 1;
@@ -674,6 +706,11 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
             Serial.println(F("!In Channel"));
             #endif
         }
+
+
+        if (enc.isRightH() && !_inChannelFlag) {++_count; _first = 1; _changedFlag = 1; }
+        if (enc.isLeftH() && !_inChannelFlag) {--_count; _first = 1; _changedFlag = 1; }
+
 
         updateDisplay(lcd, state);
 
@@ -812,6 +849,9 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 lcd.setCursor(0, 1);
                 lcd.print("                   ");
 
+                lcd.setCursor(0, 2);
+                lcd.print("                   ");
+
                 lcd.setCursor(15, 0);
                 lcd.print("     ");
 
@@ -821,7 +861,11 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 } else {
                     lcd.setCursor(18, 0);
                     lcd.print("On");
-                }
+                    lcd.setCursor(0, 2);
+                    if (currentChannel.relayMode == TO_ON) lcd.print("Direction: Off-On");
+                    else lcd.print("Direction: On-Off");
+
+                } 
                 
 
                 switch (currentChannel.mode) {
@@ -860,6 +904,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         break;
 
                     }
+
 
                 lcd.setCursor(16, 3);
                 lcd.print("Back");
@@ -1185,7 +1230,19 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                             }
                         break;
 
-                    case 3: // Back
+                    case 3:
+                        lcd.setCursor(0, 2);
+                        lcd.print("                   ");
+                        lcd.setCursor(0, 2);
+                        if (currentChannel.relayMode == TO_ON) {
+                            lcd.print("Direction: Off-On");
+                        }
+                        else {
+                            lcd.print("Direction: On-Off");
+                        }
+                        break;
+
+                    case 4: // Back
                         lcd.setCursor(15, 3);
                         lcd.print("     ");
                         lcd.setCursor(16, 3);
@@ -1258,7 +1315,20 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                             }
                         break;
 
-                    case 3: // Back
+                    case 3:
+                        lcd.setCursor(0, 2);
+                        lcd.print("                   ");
+                        lcd.setCursor(0, 2);
+                        if (currentChannel.relayMode == TO_ON) {
+                            lcd.print("Direction:>Off-On");
+                        }
+                        else {
+                            lcd.print("Direction:>On-Off");
+                        }
+                        break;
+
+
+                    case 4: // Back
                         lcd.setCursor(15, 3);
                         lcd.print('>');
                         break;

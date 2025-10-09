@@ -23,35 +23,35 @@ void scheduelerTick(RtcDateTime& now) {
             case OFF:
                 continue;
             case TIMER:
-                if (digitalRead(channelsPins[i - 1]) == LOW && millis() - timers[i - 1] >= (currentChannel.data.timerMode.periodHour * 3600000) + (currentChannel.data.timerMode.periodMinute * 60000) + (currentChannel.data.timerMode.periodSecond * 1000)) {
-                    digitalWrite(channelsPins[i - 1], HIGH);
+                if (digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode) && millis() - timers[i - 1] >= (currentChannel.data.timerMode.periodHour * 3600000) + (currentChannel.data.timerMode.periodMinute * 60000) + (currentChannel.data.timerMode.periodSecond * 1000)) {
+                    digitalWrite(channelsPins[i - 1], currentChannel.relayMode);
                     timers[i - 1] = millis();
                 }
 
-                if (digitalRead(channelsPins[i - 1]) == HIGH && millis() - timers[i - 1] >= (currentChannel.data.timerMode.workMinute * 60000) + (currentChannel.data.timerMode.workSecond * 1000)) {
-                    digitalWrite(channelsPins[i - 1], LOW);
+                if (digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode) && millis() - timers[i - 1] >= (currentChannel.data.timerMode.workMinute * 60000) + (currentChannel.data.timerMode.workSecond * 1000)) {
+                    digitalWrite(channelsPins[i - 1], !currentChannel.relayMode);
                     timers[i - 1] = millis();
                 }
                  
                 break;
 
             case DAY:
-                if (digitalRead(channelsPins[i - 1]) == LOW) {
+                if (digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode)) {
                     if (now.Hour() == currentChannel.data.dayMode.startHour) {
                         if (now.Minute() == currentChannel.data.dayMode.startMinute) {
                             if (now.Second() >= currentChannel.data.dayMode.startSecond) {
-                                digitalWrite(channelsPins[i - 1], HIGH);
+                                digitalWrite(channelsPins[i - 1], currentChannel.relayMode);
                             }
                         }
                     }
                     
                 }
 
-                if (digitalRead(channelsPins[i - 1]) == HIGH) {
+                if (digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode)) {
                     if (now.Hour() == currentChannel.data.dayMode.endHour) {
                         if (now.Minute() == currentChannel.data.dayMode.endMinute) {
                             if (now.Second() >= currentChannel.data.dayMode.endSecond) {
-                                digitalWrite(channelsPins[i - 1], LOW);
+                                digitalWrite(channelsPins[i - 1], !uint8_t(currentChannel.relayMode));
                             }
                         }
                     }
@@ -60,36 +60,19 @@ void scheduelerTick(RtcDateTime& now) {
                 break;
 
             case SENSOR:
-                if (analogRead(channelsPins[i - 1]) >= currentChannel.data.sensorMode.threshold && !digitalRead(channelsPins[i - 1])) {
-                    digitalWrite(channelsPins[i - 1], HIGH);
+                if (analogRead(channelsPins[i - 1]) >= currentChannel.data.sensorMode.threshold && digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode)) {
+                    digitalWrite(channelsPins[i - 1], uint8_t(currentChannel.relayMode));
                     timers[i - 1] = millis();
                 }
 
-                if (millis() - timers[i - 1] > currentChannel.data.sensorMode.workMinute * 60000 + currentChannel.data.sensorMode.workSecond * 1000 && digitalRead(channelsPins[i - 1])) {
-                    digitalWrite(channelsPins[i - 1], LOW);
+                if (millis() - timers[i - 1] > currentChannel.data.sensorMode.workMinute * 60000 + currentChannel.data.sensorMode.workSecond * 1000 && digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode)) {
+                    digitalWrite(channelsPins[i - 1], !uint8_t(currentChannel.relayMode));
                 }
             
 
                 break;
 
             case WEEK:
-                /*
-                switch (now.DayOfWeek()) {
-                    case 0: //Sunday
-
-                        if (currentChannel.data.weekMode.days.[6].enabled) {
-                            if (digitalRead(channelsPin[i - 1]) == LOW) {
-                                if (now.Hour() == currentChannel.data.weekMode.days[6].startHour) {
-                                    if (now.Minute() == currentChannel.data.weekMode.days[6].startMinute) {
-                                        if (now.Second() >= currentChannel.data.weekMode.days[6])
-                                    }
-                                }
-                            }
-
-                        } else break; 
-                }
-                break;
-                */
                uint8_t today = now.DayOfWeek();
                if (today >= 1) --today;
                else if (today == 0) today = 6; // sunday
@@ -97,22 +80,22 @@ void scheduelerTick(RtcDateTime& now) {
                
                if (currentChannel.data.weekMode.days[today].enabled) {
                
-                    if (digitalRead(channelsPins[i - 1]) == LOW) {
+                    if (digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode)) {
                         if (now.Hour() == currentChannel.data.weekMode.days[today].startHour) {
                             if (now.Minute() == currentChannel.data.weekMode.days[today].startMinute) {
                                 if (now.Second() >= currentChannel.data.weekMode.days[today].startSecond) {
-                                    digitalWrite(channelsPins[i - 1], HIGH);
+                                    digitalWrite(channelsPins[i - 1], uint8_t(currentChannel.relayMode));
                                 }
                             }
                         }
                     
                     }
 
-                    if (digitalRead(channelsPins[i - 1]) == HIGH) {
+                    if (digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode)) {
                         if (now.Hour() == currentChannel.data.weekMode.days[today].endHour) {
                             if (now.Minute() == currentChannel.data.weekMode.days[today].endMinute) {
                                 if (now.Second() >= currentChannel.data.weekMode.days[today].endSecond) {
-                                    digitalWrite(channelsPins[i - 1], LOW);
+                                    digitalWrite(channelsPins[i - 1], !uint8_t(currentChannel.relayMode));
                                 }
                             }
                         }

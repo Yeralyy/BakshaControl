@@ -16,6 +16,7 @@ Author: @Yeralyy
 #define BUF_SIZE 64
 #define INTERRUPT_PIN 3
 #endif
+#define INTERRUPT_PIN 3
 
 #if ESP32
 #include <SoftwareSerial.h>
@@ -38,7 +39,7 @@ Author: @Yeralyy
 #define SW 8
 
 
-encMinim enc(1, 7, 8, 0);
+encMinim enc(6, 7, 8, 0);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 ThreeWire myWire(4, 5, 2);
 RtcDS1302<ThreeWire> rtc(myWire);
@@ -74,7 +75,6 @@ void ringing() {
 }
 #endif
 
-//void halting() {ringingFlag = 0;}
 
 
 void setup() {
@@ -210,7 +210,6 @@ void loop() {
   
 
   #else
-
   enc.tick(); // encoder handler
   RtcDateTime now = rtc.GetDateTime();
   scheduelerTick(now);
@@ -253,6 +252,8 @@ void loop() {
       arrow.modesTick(enc, lcd, state);
       break;
   }
+
+  
 
   #if ESP32
   

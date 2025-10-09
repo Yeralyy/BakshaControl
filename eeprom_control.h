@@ -7,15 +7,15 @@
 #define EEPROM_KEY_ADDRESS 1023
 #define EEPROM_KEY 22
 
-#define CHANNELS_COUNT 4 
+#define CHANNELS_COUNT 5 
 #define SERVOS 4 // later
 
 #define CHANNELS_ADDRESS 0
 #define CHANNELS_SIZE 104
 
 
-const uint8_t channelsPins[CHANNELS_COUNT] {9, 6, 10, 11}; // A6 - 20
-uint32_t timers[CHANNELS_COUNT] {0, 0, 0, 0};
+const uint8_t channelsPins[CHANNELS_COUNT] {9, 10, 11, 12, 13}; // A6 - 20
+uint32_t timers[CHANNELS_COUNT] {0, 0, 0, 0, 0};
 
 struct Day {
     // start
@@ -99,6 +99,8 @@ struct Channel {
     } data; // 49 bytes
 
     Mode mode {OFF}; // 1 byte
+    RelayMode relayMode {TO_ON};
+    
 }; // 50  bytes
 
 
