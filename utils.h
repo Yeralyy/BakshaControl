@@ -35,7 +35,7 @@ void pinConstrain(T& pin, bool dir = 1) {
 	if (pin > 17 && pin < 20) {
 		if (dir) pin = 20;
 		else pin = 17;
-	} else constraining(pin, 14, 21);
+	} else constraining(pin, 16, 21);
 }
 
 template <typename T, typename K>

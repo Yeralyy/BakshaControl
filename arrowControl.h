@@ -21,8 +21,7 @@ class ArrowControl {
 
         uint32_t _tmr {0};
 
-        int8_t _count;
-        int8_t _index; // arrow index
+        int8_t _count; int8_t _index; // arrow index
         int8_t _indexFlag;
         int8_t _dayIndex {0};
         int8_t _dayIndexFlag {0};
@@ -34,6 +33,9 @@ class ArrowControl {
         bool _channelFlag {1};
 	    bool _settingsChanged {0};
         bool _modesFlag = {1};
+
+        bool _scrollFlag = {0};
+
         uint8_t _oneByte {0};
         uint8_t _switchByte {0};
         Mode _lastMode;
@@ -100,7 +102,7 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
 void ArrowControl::constrainHelper() {
         if (currentChannel.mode != OFF) {
             if (_index < 0) { _index = 0; _changedFlag = 0; }
-            else if (_index > 5) {_index = 5; _changedFlag = 0; } // constraining
+            else if (_index > 4) {_index = 4; _changedFlag = 0; } // constraining
         } else {
             if (_index < 0) { _index = 0; _changedFlag = 0; } // if mode is OFF
             else if (_index == 2 && _indexFlag != 4) {_index = 4; }
@@ -161,7 +163,7 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
                 if (currentChannel.data.sensorMode.threshold < 0 || currentChannel.data.sensorMode.threshold > 1023) currentChannel.data.sensorMode.threshold = 1023;
                 if (currentChannel.data.sensorMode.workMinute > 99) currentChannel.data.sensorMode.workMinute = 0;
                 if (currentChannel.data.sensorMode.workSecond > 59) currentChannel.data.sensorMode.workSecond = 0;
-                currentChannel.data.sensorMode.pin = 14; // A0 default
+                currentChannel.data.sensorMode.pin = sensorsPins[0]; // A0 default
                 _switchByte &= ~(1 << 0);
             }
 
@@ -312,7 +314,7 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
                 currentChannel.data.PidMode.Kd = 0.0f;
 
                 currentChannel.data.PidMode.setPoint = 0;
-                currentChannel.data.PidMode.pin = 14;
+                currentChannel.data.PidMode.pin = 16; // A2 default
                 _switchByte &= ~(1 << 0);
             }
 
@@ -730,16 +732,24 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
 void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) { // modesfunc
     redrawDisplay(lcd, state);
-    if (enc.isRight()) {
-        _indexFlag = _index;
-        ++_index;
-        _changedFlag = 1;
+
+    if (_index != 0 && enc.isClick())  {
+        _scrollFlag = !_scrollFlag;      
     }
 
-    if (enc.isLeft()) {
-        _indexFlag = _index;
-        --_index;
-        _changedFlag = 1;
+    if (!_scrollFlag) {
+
+        if (enc.isRight()) {
+            _indexFlag = _index;
+            ++_index;
+            _changedFlag = 1;
+        }
+
+        if (enc.isLeft()) {
+            _indexFlag = _index;
+            --_index;
+            _changedFlag = 1;
+        }
     }
 
 
@@ -771,19 +781,18 @@ void ArrowControl::modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) 
     if (_changedFlag || _settingsChanged || (millis() - _tmr > 500)) updateDisplay(lcd, state);
 
 
-    if (_index != 0 && enc.isRightH()) {
+
+    if (_scrollFlag && enc.isRight()) {
         _switchByte |= (1 << 1);
         _settingsChanged = 1;
         switchHelper(enc, 1);
     }
-        
-        switchHelper(enc, 1);
-    if (_index != 0 && enc.isLeftH()) {
+
+    if (_scrollFlag && enc.isLeft()) {
         _switchByte |= (1 << 1);
         _settingsChanged = 1;
         switchHelper(enc, 0);
     }
-
 
    if (_index == 0 && enc.isClick()) {
     state = CHANNELS;
@@ -970,12 +979,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print("Pin: A");
                         
                         switch (currentChannel.data.PidMode.pin) {
-                            case 14:
-                                lcd.print('0');
-                                break;
-                            case 15:
-                                lcd.print('1');
-                                break;
                             case 16:
                                 lcd.print('2');
                                 break;
@@ -989,8 +992,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                                 lcd.print('7');
                                 break;
                             default:
-                                lcd.print('0');
-                                break;
+                                lcd.print('2');
                         }
                         
 
@@ -1046,12 +1048,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         lcd.print("Pin: A");
                         
                         switch (currentChannel.data.sensorMode.pin) {
-                            case 14:
-                                lcd.print('0');
-                                break;
-                            case 15:
-                                lcd.print('1');
-                                break;
                             case 16:
                                 lcd.print('2');
                                 break;
@@ -2091,14 +2087,3 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
        break;
     }
 }
-
-/*
-void ArrowControl::calculateLeft(LiquidCrystal_I2C& lcd, FSM& state) {
-    switch (state) {
-        case TIMER:
-
-            break;
-
-    }
-};
-*/

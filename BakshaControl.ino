@@ -47,7 +47,8 @@ GyverBME280 bme;
 ArrowControl arrow;
 
 #if SIM800L
-SoftwareSerial sim800l(13, 12); // 13 - TX, 12 - RX
+SoftwareSerial sim800l(11, 12); // 13 - TX, 12 - RX
+char buffer[BUF_SIZE];
 #endif
 
 #if ESP32
@@ -67,6 +68,7 @@ uint32_t pid_tmr {0};
 char buf[BUF_SIZE];
 volatile bool ringingFlag {0};
 #endif
+volatile bool ringingFlag {0};
 
 
 #if SIM800L
@@ -94,7 +96,6 @@ void setup() {
   #if SIM800L
   Serial.begin(9600);
   sim800l.begin(9600);
-  sim800l.println("AT");
   //sim800l.println(F("ATE0V0+CMEE=1;&W"));
 
 
@@ -141,13 +142,9 @@ void setup() {
     pinMode(channelsPins[i], OUTPUT); 
   }
 
-  pinMode(14, INPUT);
-  pinMode(15, INPUT);
-  pinMode(16, INPUT);
-  pinMode(17, INPUT);
-  pinMode(20, INPUT);
-  pinMode(21, INPUT);
-
+  for (int i = 0; i < SENSORS_COUNT; ++i) {
+    pinMode(sensorsPins[i], INPUT);
+  }
 
   state = MAIN_MENU;
   drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
@@ -199,12 +196,18 @@ void loop() {
     */
     
 
-  if (sim800l.available()) {
-    Serial.println(sim800l.read());
+  if (sim800l.available() > 0) {
+    /*
+    uint8_t symbol = sim800l.read();
+    Serial.print(symbol);
+    if (symbol == 10) Serial.println();
+    else Serial.print(' ');
+    */
+    Serial.write(sim800l.read());
   }
 
   if (Serial.available()) {
-    sim800l.println(Serial.read());
+    sim800l.write(Serial.read());
   }
 
   

@@ -7,15 +7,16 @@
 #define EEPROM_KEY_ADDRESS 1023
 #define EEPROM_KEY 22
 
-#define CHANNELS_COUNT 5 
-#define SERVOS 4 // later
+#define CHANNELS_COUNT 7 
+#define SENSORS_COUNT 4
 
 #define CHANNELS_ADDRESS 0
 #define CHANNELS_SIZE 104
 
 
-const uint8_t channelsPins[CHANNELS_COUNT] {9, 10, 11, 12, 13}; // A6 - 20
-uint32_t timers[CHANNELS_COUNT] {0, 0, 0, 0, 0};
+const uint8_t sensorsPins[SENSORS_COUNT] {16, 17, 20, 21};
+const uint8_t channelsPins[CHANNELS_COUNT] {0, 1, 9, 10, 13, 14, 15}; // A6 - 20
+uint32_t timers[CHANNELS_COUNT] {0, 0, 0, 0, 0, 0, 0};
 
 struct Day {
     // start
@@ -150,7 +151,7 @@ void initEEPROM(void) {
 }
 
 void factoryReset(void) {
-    for (int8_t i = 0; i < CHANNELS_COUNT; i++) {
+    for (int8_t i = 1; i < CHANNELS_COUNT + 1; i++) {
         Channel channel {};
         putChannel(i, channel);
     }
