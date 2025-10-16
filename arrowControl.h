@@ -43,7 +43,7 @@ class ArrowControl {
         void redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void constrainHelper();
-        void switchHelper(encMinim& enc,  const bool isRight);
+        void switchHelper(encMinim& enc, const bool isRight);
         //void calculateLeft(LiquidCrystal_I2C& lcd, FSM& state);
         //void constrainModes(void);
 };
@@ -54,6 +54,7 @@ class ArrowControl {
 void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  {
     redrawDisplay(lcd, state);
 
+    /*
     if (enc.isTurn()) {
         if (enc.isRight()) ++_count;
         if (enc.isLeft()) --_count;
@@ -62,8 +63,11 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
         Serial.println(F("MAIN_MENU:Enc t"));
         #endif
     }
+        */
+
 
     if (enc.isClick()) {
+        /*
         switch (_count) {
             case 0:
                 state = CHANNELS;
@@ -88,14 +92,18 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
 
                 break;
         }
+        */
+        state = CHANNELS;
         lcd.clear(); // clean display
         _first = 1;
     }
 
+    /*
     if (_count < 0) _count = 2;
     if (_count > 2) _count = 0;
+    */
 
-    updateDisplay(lcd, state); // arrows
+    //updateDisplay(lcd, state); // arrows
 
 }
 
@@ -823,16 +831,16 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 #if LOG
                 Serial.println(F("Draw MAIN_MENU"));
                 #endif
+
+
         
-                /*  Service
-                    Channels
-                    Sensors*/
-                lcd.setCursor(11, 0); 
-                lcd.print(">Channels"); // arrow (11, 0)
-                lcd.setCursor(13, 1);
-                lcd.print("Service"); // arrow (11, 1);
-                lcd.setCursor(13, 2);
-                lcd.print("Sensors"); // arrow (11, 2);
+                lcd.setCursor(0, 2);
+                lcd.print("temp: ");
+                lcd.setCursor(10, 2);
+                lcd.print('C');
+                
+                lcd.setCursor(0, 3);
+                lcd.print("hum: ");
 
                 _count = 0;
 

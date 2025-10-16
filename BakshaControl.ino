@@ -64,6 +64,8 @@ uint32_t menu_tmr {0};
 uint32_t time_tmr {0};
 uint32_t pid_tmr {0};
 
+
+
 #if SIM800L
 char buf[BUF_SIZE];
 volatile bool ringingFlag {0};
@@ -111,6 +113,7 @@ void setup() {
   rtc.Begin(); // real time clock
   bme.begin(); // bme280
 
+  loadClock(lcd);
 
   /* real time clock check & init*/
 
@@ -147,7 +150,7 @@ void setup() {
   }
 
   state = MAIN_MENU;
-  drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
+  drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity(), bme.readPressure());
   updateTime(lcd, now);
 
   if (!digitalRead(SW)) {
@@ -240,7 +243,7 @@ void loop() {
 
       if (millis() - menu_tmr >= ONE_SECOND) {
         menu_tmr = millis();
-        drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity());
+        drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity(), bme.readPressure());
       }
       lastState = MAIN_MENU;
       break;

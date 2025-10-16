@@ -3,7 +3,7 @@ File for defining config values
 */
 #pragma once
 
-#define LOG 1 // 1 - enable logging, 0 - disable
+#define LOG 0 // 1 - enable logging, 0 - disable
 #define BME280 1 // 1 - BME 280 in use, 0 - no BME280
 #define SIM800L 0
 #define ESP32 0
