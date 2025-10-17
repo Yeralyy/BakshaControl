@@ -114,6 +114,7 @@ void initEEPROM(void);
 void factoryReset(void);
 void updateChannels(Channels& channels);
 Channel getChannel(int8_t n);
+Channel getOnChannel(int8_t n);
 void putChannel(int8_t n, Channel& channel);
 bool isFirstRun(void);
 void resetEEPROM(void);
@@ -172,6 +173,20 @@ Channel getChannel(int8_t n) { // return get N'th struct in Channels
         return channel;
     } 
 }
+
+/*
+Channel getChannel(int8_t n) {
+    if (n > 0 && n <= CHANNELS_COUNT) {
+        Channel channel;
+        EEPROM.get(CHANNELS_ADDRESS + (n-1) * sizeof(Channel), channel);
+        
+        if (channel.mode != OFF) {
+            return channel;
+        }
+
+    }
+}
+*/
 
 void putChannel(int8_t n, Channel& channel) { // put N'th struct in Channels
     if (n > 0 && n <= CHANNELS_COUNT) EEPROM.put(CHANNELS_ADDRESS + (n - 1) * sizeof(Channel), channel);

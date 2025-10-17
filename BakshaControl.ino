@@ -216,9 +216,9 @@ void loop() {
   
 
   #else
-  enc.tick(); // encoder handler
   RtcDateTime now = rtc.GetDateTime();
   scheduelerTick(now);
+  enc.tick(); // encoder handler
 
   if (millis() - pid_tmr >= PID_DT) {
     pid_tmr = millis();

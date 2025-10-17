@@ -66,7 +66,7 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
         */
 
 
-    if (enc.isClick()) {
+    if (enc.isTurn() || enc.isClick()) {
         /*
         switch (_count) {
             case 0:
@@ -94,6 +94,7 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
         }
         */
         state = CHANNELS;
+        _scrollFlag = 1;
         lcd.clear(); // clean display
         _first = 1;
     }
@@ -421,8 +422,17 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
 
         // ==================================== ARROW TRACKING ==============================
+        if (_index == 0 && enc.isClick()) {
+            _scrollFlag = !_scrollFlag;
+        }
 
-        if (_inChannelFlag) {
+        if (_scrollFlag) {
+            if (enc.isRight()) {++_count; _first = 1; _changedFlag = 1; }
+            if (enc.isLeft()) {--_count; _first = 1; _changedFlag = 1; }
+        }
+        
+
+        if (!_scrollFlag) {
             // arrow pos tracking
             if (enc.isRight()) {
                 _indexFlag = _index;
@@ -446,7 +456,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                 lcd.clear();
                 state = MAIN_MENU; // MAIN_MENU
                 _first = 1;
-                _inChannelFlag = 0;
+                _scrollFlag = 0;
                 _index = 0;
 
 
@@ -722,15 +732,13 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
         } 
 
         if (enc.isClick()) { 
-            _inChannelFlag = 1;
+            _scrollFlag = 0;
             #if LOG
             Serial.println(F("!In Channel"));
             #endif
         }
 
 
-        if (enc.isRightH() && !_inChannelFlag) {++_count; _first = 1; _changedFlag = 1; }
-        if (enc.isLeftH() && !_inChannelFlag) {--_count; _first = 1; _changedFlag = 1; }
 
 
         updateDisplay(lcd, state);
