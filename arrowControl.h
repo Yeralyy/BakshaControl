@@ -9,6 +9,40 @@
 #include "states.h"
 
 
+const char TEMP_STR[] PROGMEM = "temp:";
+const char PRESSURE_STR[] PROGMEM = "pressre:";
+const char HUMIDITY_STR[] PROGMEM = "hum:";
+const char CHANNEL_STR[] PROGMEM = "Channel ";
+const char ON_STR[] PROGMEM = "On";
+const char OFF_STR[] PROGMEM = "Off";
+const char BACK_STR[] PROGMEM = "Back";
+const char MODE_STR[] PROGMEM = "Mode:";
+
+const char MODES_TO_TEXT[][5] PROGMEM = {
+    "<TIMER>", "<PID>", "<DAY>", "<WEEK>", "<Sensor>" 
+};
+
+const char DIRECTION_STR[] PROGMEM = "Direction:";
+
+const char WORK_STR[] PROGMEM = "Work: ";
+const char PERIOD_STR[] PROGMEM = "Period: ";
+const char LEFT_STR[] PROGMEM = "Left: ";
+
+const char PID_COEFFICIENT_STR[][3] PROGMEM = {"Kp:", "Ki", "Kd"};
+const char SETPOINT_STR[] PROGMEM = "Set:";
+const char PIN_STR[] PROGMEM = "Pin:";
+const char VALUE_STR[] PROGMEM = "Val:";
+
+const char START_STR[] PROGMEM = "Start:";
+const char END_STR[] PROGMEM = "End";
+
+const char DAYS_TO_TEXT[][7] PROGMEM = {
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+};
+
+const char THRESHOLD_STR[] PROGMEM = "Threshold:";
+
+
 // MUSTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARD
 
 class ArrowControl {
@@ -18,6 +52,8 @@ class ArrowControl {
         void modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
     private:
         Channel currentChannel;
+
+        char _buffer[20];
 
         uint32_t _tmr {0};
 
@@ -44,8 +80,11 @@ class ArrowControl {
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void constrainHelper();
         void switchHelper(encMinim& enc, const bool isRight);
+        
         //void calculateLeft(LiquidCrystal_I2C& lcd, FSM& state);
         //void constrainModes(void);
+
+        void printMode(LiquidCrystal_I2C& lcd, uint8_t x, uint8_t y, uint8_t modeNum);
 };
 
 
@@ -203,13 +242,10 @@ void ArrowControl::switchHelper(encMinim& enc, const bool isRight = 1) {
             break;
         case WEEK:
             if (_switchByte & (1 << 0)) {
-                currentChannel.data.weekMode.days[0] = {0, 0, 0, 0, 0, 0, 1}; // by default at least 1 day is enabled
-                currentChannel.data.weekMode.days[1] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
-                currentChannel.data.weekMode.days[2] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
-                currentChannel.data.weekMode.days[3] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
-                currentChannel.data.weekMode.days[4] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
-                currentChannel.data.weekMode.days[5] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
-                currentChannel.data.weekMode.days[6] = {0, 0, 0, 0, 0, 0, 0}; // by default at least 1 day is enabled
+                for (int i = 0; i < 6; ++i) {
+                    if (i == 1) currentChannel.data.weekMode.days[i] = {0, 0, 0, 0, 0, 0, 1};
+                    else currentChannel.data.weekMode.days[i] = {0, 0, 0, 0, 0, 0, 0};
+                }
                 _switchByte &= ~(1 << 0);
             }
 
@@ -506,10 +542,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         _first = 1; 
                         _inChannelFlag = 0; 
 
-                        lcd.setCursor(0, 1);
-                        lcd.print("                   ");
-                        lcd.setCursor(0, 2);
-                        lcd.print("                   ");
+                        clearRow(lcd, 1);
+                        clearRow(lcd, 2);
 
                         _channelFlag = 1;
 
@@ -523,36 +557,13 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                     case 1:
                         // ON/OFF
                         if (currentChannel.mode == OFF) currentChannel.mode = TIMER;  // default
-                        lcd.setCursor(16, 0);
-                        lcd.print("    ");
-                        lcd.setCursor(17, 0);
-                        lcd.print(">On");
+                        printText(lcd, 16, 0, "    ");
+                        printText(lcd, 17, 0, ">On");
 
-                        lcd.setCursor(0, 1);
-                        switch (currentChannel.mode) {
-                            case TIMER:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Timer>");
-                                break;
-                            
-                            case PID:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <PID>");
-                                break;
-                            
-                            case DAY:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Day>");
-                                break;
-                            case SENSOR:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Sensor>");
-                        }
+                        printMode(lcd, 0, 1, (uint8_t)currentChannel.mode);
 
-                        lcd.setCursor(0, 2);
-                        if (currentChannel.relayMode == TO_ON) lcd.print("Direction: Off-On");
-                        else lcd.print("Direction: On-Off");
-                        
+                        if (currentChannel.relayMode == TO_ON) printText(lcd, 0, 2, "Direction: Off-On");
+                        else printText(lcd, 0, 2, "Direction: On-Off");
                         _changedFlag = 1;
 
                         break;
@@ -564,44 +575,13 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
                         if (currentChannel.mode != OFF) currentChannel.mode++; // Next Mode
 
-                        lcd.setCursor(0, 1); 
-                        lcd.print("                   "); // clearing Mode
+                        clearRow(lcd, 1);
+
                         #if LOG
                         Serial.println(F("Clearing mode"));
                         #endif
 
-                        switch (currentChannel.mode) {
-                            case TIMER:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Timer>");
-                                break;
-                            
-                            case PID:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <PID>");
-                                break;
-                            
-                            case DAY:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Day>");
-                                break;
-                            
-                            case SENSOR:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Sensor>");
-                                break;
-                            
-                            case WEEK:
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Week>");
-                                break;
-
-                            default:
-                                #if LOG
-                                Serial.println("Unxecpected mode");
-                                #endif
-                                break;
-                        }
+                        printMode(lcd, 0, 1, (uint8_t)currentChannel.mode);
 
                         _channelFlag = 1;
                         
@@ -610,10 +590,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                     case 3:
                         if (currentChannel.relayMode == TO_OFF) {
                             currentChannel.relayMode = TO_ON; 
-                            lcd.setCursor(10, 2);
-                            lcd.print("          ");
-                            lcd.setCursor(10, 2);
-                            lcd.print(">Off-On");
+                            printText(lcd, 10, 2, "          ");
+                            printText(lcd, 10, 2, ">Off-On");
 
                             _channelFlag = 1;
                         }
@@ -638,10 +616,8 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         _inChannelFlag = 0;
                         _changedFlag = 1;
 
-                        lcd.setCursor(0, 1);
-                        lcd.print("                   ");
-                        lcd.setCursor(0, 2);
-                        lcd.print("                   ");
+                        clearRow(lcd, 1);
+                        clearRow(lcd, 2);
 
                         _channelFlag = 1;
 
@@ -655,16 +631,11 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
                         if (currentChannel.mode != OFF) currentChannel.mode = OFF;
 
-                        lcd.setCursor(17, 0);
-                        lcd.print("   ");
-                        lcd.setCursor(16, 0);
-                        lcd.print(">Off");
+                        printText(lcd, 17, 0, "    ");
+                        printText(lcd, 16, 0, ">Off");
 
-                        lcd.setCursor(0, 1);
-                        lcd.print("                   "); // clearing Mode
-
-                        lcd.setCursor(0, 2);
-                        lcd.print("                   ");
+                        clearRow(lcd, 1);
+                        clearRow(lcd, 2);
 
                         _channelFlag = 1;
                         
@@ -677,53 +648,18 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
                         Serial.println(F("Changing mode--"));            
                         #endif
 
-                        lcd.setCursor(0, 1);
-                        lcd.print("                   ");
-
-                        switch (currentChannel.mode) {
-                            case TIMER:
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Timer>");
-                                break;
-                            
-                            case PID: 
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <PID>");
-                                break;
-                            
-                            case DAY:
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Day>");
-                                break;
-                            
-                            case SENSOR:
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Sensor>"); 
-                                break;
-
-                            case WEEK:
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Week>");
-                                break;
-
-                            default:
-                                #if LOG
-                                Serial.println(F("Unexptected Mode"));
-                                #endif
-                                break;
-                        }
+                        clearRow(lcd, 1);
+                        replaceSymbol(lcd, 0, 1, '>');
+                        printMode(lcd, 1, 1, (uint8_t)currentChannel.mode);
 
                         _channelFlag = 1;
-                        
                         break;
-                    
+
                         case 3:
                         if (currentChannel.relayMode == TO_ON) {
                             currentChannel.relayMode = TO_OFF; 
-                            lcd.setCursor(10, 2);
-                            lcd.print("          ");
-                            lcd.setCursor(10, 2);
-                            lcd.print(">On-Off");
+                            printText(lcd, 10, 2, "          ");
+                            printText(lcd, 10, 2, ">On-Off");
                             _channelFlag = 1;
                         }
                         break;
@@ -839,17 +775,12 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 #if LOG
                 Serial.println(F("Draw MAIN_MENU"));
                 #endif
-
-
-        
-                lcd.setCursor(0, 2);
-                lcd.print("temp: ");
-                lcd.setCursor(10, 2);
-                lcd.print('C');
+                strcpy_P(_buffer, (const char*)TEMP_STR);
+                printText(lcd, 0, 2, _buffer);
+                replaceSymbol(lcd, 10, 2, 'C');
                 
-                lcd.setCursor(0, 3);
-                lcd.print("hum: ");
-
+                strcpy_P(_buffer, (const char*)HUMIDITY_STR);
+                printText(lcd, 0, 3, _buffer);
                 _count = 0;
 
                 break;
@@ -861,12 +792,9 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 if (_count < 1) _count = 1;
                 if (_count > CHANNELS_COUNT) _count = CHANNELS_COUNT;
 
-                lcd.setCursor(0, 0);
-                lcd.print(">");
-
-                lcd.setCursor(1, 0);
-                lcd.print("Channel ");
-
+                replaceSymbol(lcd, 0, 0, '>');
+                strcpy_P(_buffer, (const char*)CHANNEL_STR);
+                printText(lcd, 1, 0, _buffer);
                 lcd.print(_count);
 
 
@@ -882,79 +810,40 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 currentChannel.mode = TIMER;
                 #endif
 
-                lcd.setCursor(0, 1);
-                lcd.print("                   ");
-
-                lcd.setCursor(0, 2);
-                lcd.print("                   ");
-
-                lcd.setCursor(15, 0);
-                lcd.print("     ");
+                clearRow(lcd, 1);
+                clearRow(lcd, 2);
+                printText(lcd, 15, 0, "     ");
 
                 if (currentChannel.mode == OFF) {
-                    lcd.setCursor(17, 0);
-                    lcd.print("Off");
+                    printText(lcd, 17, 0, "Off");
                 } else {
-                    lcd.setCursor(18, 0);
-                    lcd.print("On");
+                    printText(lcd, 17, 0, "On");
                     lcd.setCursor(0, 2);
                     if (currentChannel.relayMode == TO_ON) lcd.print("Direction: Off-On");
                     else lcd.print("Direction: On-Off");
 
                 } 
-                
 
-                switch (currentChannel.mode) {
-                    case OFF:
-                        lcd.setCursor(16, 3);
-                        lcd.print("Back");
-                        break;
-                    case TIMER:
-                        lcd.setCursor(0, 1);
-                        lcd.print("Mode: <Timer>");
-
-                        break;
-
-                    case PID:
-                        lcd.setCursor(0, 1);
-                        lcd.print("Mode: <PID>");
-
-                        break;
-
-                    case DAY:
-                        lcd.setCursor(0, 1);
-                        lcd.print("Mode: <Day>");
-
-                        break;
-                    
-                    case SENSOR:
-                        lcd.setCursor(0, 1);
-                        lcd.print("Mode: <Sensor>");
-
-                        break;
-
-                    case WEEK:
-                        lcd.setCursor(0, 1);
-                        lcd.print("Mode: <Week>");
-
-                        break;
-
-                    }
-
+                if (((uint8_t)currentChannel.mode) != 0) {
+                    printMode(lcd, 0, 1, (uint8_t)currentChannel.mode);
+                } else {
+                    strcpy_P(_buffer, (const char*)BACK_STR);
+                    printText(lcd, 16, 3, _buffer);
+                }
 
                 lcd.setCursor(16, 3);
                 lcd.print("Back");
-            break;
+                break;
 
             case MODES:
                 switch (currentChannel.mode) {
                     case TIMER:
-                        lcd.setCursor(0, 0);
-                        lcd.print("<TIMER>");
+                        strcpy_P(_buffer, (const char*)MODES_TO_TEXT[0]);
+                        printText(lcd, 0, 0, _buffer);
 
+                        strcpy_P(_buffer, (const char*)PERIOD_STR);
+                        printText(lcd, 0, 1, _buffer);
 
-                        lcd.setCursor(0, 1);
-                        lcd.print("Period: "); // period. e.g: every 5hours, every 5 mins
                         //target
                         print2digits(currentChannel.data.timerMode.periodHour, lcd, 8, 1);
                         lcd.print("h ");
@@ -963,36 +852,29 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         print2digits(currentChannel.data.timerMode.periodSecond, lcd, 16, 1);
                         lcd.print('s');
                         
-
-                        lcd.setCursor(0, 2);
-                        lcd.print("Work: "); // work time 
+                        strcpy_P(_buffer, (const char*)WORK_STR);
+                        printText(lcd, 0, 2, _buffer);
                         print2digits(currentChannel.data.timerMode.workMinute, lcd, 6, 2);
                         lcd.print("m ");
                         print2digits(currentChannel.data.timerMode.workSecond, lcd, 10, 2);
                         lcd.print('s');
                         
-                        lcd.setCursor(0, 3);
-                        lcd.print("Left: 00h 00m 00s");
+                        //lcd.setCursor(0, 3);
+                        //lcd.print("Left: 00h 00m 00s");
                         break;
 
                     case PID: 
+                        strcpy_P(_buffer, (const char*)MODES_TO_TEXT[1]);
+                        printText(lcd, 0, 0, _buffer);
 
-                        lcd.setCursor(0, 0);
-                        lcd.print("<PID>");
+                        printText(lcd, 0, 1, "Kp: 00.00");
+                        printText(lcd, 0, 2, "Ki: 00.00");
+                        printText(lcd, 0, 3, "Kd: 00.00");
 
-                        lcd.setCursor(0, 1);
-                        lcd.print("Kp: 00.00");
-                        lcd.setCursor(0, 2);
-                        lcd.print("Ki: 00.00");
-                        lcd.setCursor(0, 3);
-                        lcd.print("Kd: 00.00");
-
-                        lcd.setCursor(11, 1);
-                        lcd.print("Set: ");
+                        printText(lcd, 11, 1, "Set: ");
                         lcd.print(currentChannel.data.PidMode.setPoint);
                         
-                        lcd.setCursor(11, 2);
-                        lcd.print("Pin: A");
+                        printText(lcd, 11, 2, "Pin: A");
                         
                         switch (currentChannel.data.PidMode.pin) {
                             case 16:
@@ -1010,21 +892,16 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                             default:
                                 lcd.print('2');
                         }
-                        
 
-                        lcd.setCursor(11, 3);
-                        lcd.print("Val: ");
+                        printText(lcd, 11, 3, "Val: ");
                         lcd.print(analogRead(currentChannel.data.PidMode.pin));
-
-                        
                         break;
 
                     case DAY:
-                        lcd.setCursor(0, 0);
-                        lcd.print("<Day>");
+                        strcpy_P(_buffer, (const char*)MODES_TO_TEXT[2]);
+                        printText(lcd, 0, 0, _buffer);
 
-                        lcd.setCursor(0, 1);
-                        lcd.print("Start: ");
+                        printText(lcd, 0, 1, "Start: ");
                         print2digits(currentChannel.data.dayMode.startHour, lcd, 7, 1);
                         lcd.print(':');
                         print2digits(currentChannel.data.dayMode.startMinute, lcd, 10, 1);
@@ -1032,25 +909,20 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         print2digits(currentChannel.data.dayMode.startSecond, lcd, 13, 1);
                         lcd.print('s');
 
-                        lcd.setCursor(0, 2);
-                        lcd.print("End: ");
+                        printText(lcd, 0, 2, "End: ");
                         print2digits(currentChannel.data.dayMode.endHour, lcd, 5, 2);
                         lcd.print(':');
                         print2digits(currentChannel.data.dayMode.endMinute, lcd, 8, 2);
                         lcd.print('.');
                         print2digits(currentChannel.data.dayMode.endSecond, lcd, 11, 2);
                         lcd.print('s');
-
-                        lcd.setCursor(0, 3);
-                        lcd.print("Left: 00:00.00s");
                         break;
                     
                     case SENSOR:
-                        lcd.setCursor(0, 0);
-                        lcd.print("<Sensor>");
+                        strcpy_P(_buffer, (const char*)MODES_TO_TEXT[3]);
+                        printText(lcd, 0, 0, _buffer);
 
-                        lcd.setCursor(0, 1);
-                        lcd.print("Threshold: ");
+                        printText(lcd, 0, 1, "Threshold: ");
                         lcd.print(currentChannel.data.sensorMode.threshold);
 
                         lcd.setCursor(0, 2);
@@ -1060,8 +932,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         print2digits(currentChannel.data.sensorMode.workSecond, lcd, 10, 2);
                         lcd.print('s');
 
-                        lcd.setCursor(0, 3);
-                        lcd.print("Pin: A");
+                        printText(lcd, 0, 3, "Pin: A");
                         
                         switch (currentChannel.data.sensorMode.pin) {
                             case 16:
@@ -1082,48 +953,27 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         }
                         
 
-                        lcd.setCursor(9, 3);
-                        lcd.print("Val: ");
+                        printText(lcd, 9, 3, "Val: ");
                         lcd.print(analogRead(currentChannel.data.sensorMode.pin));
                        break;
                     
                     case WEEK:
-                        lcd.setCursor(0, 0);
-                        lcd.print("<WEEK>");
+                        strcpy_P(_buffer, (const char*)MODES_TO_TEXT[4]);
+                        printText(lcd, 0, 0, _buffer);
 
-                        lcd.setCursor(0, 1);
-                        //lcd.print("Day: Monday       On");
-                        switch (_dayIndex) {
-                            case 0:
-                                lcd.print("Day: Monday");
-                                break;
-                            case 1:
-                                lcd.print("Day: Tuesday");
-                                break;
-                            case 2:
-                                lcd.print("Day: Wednesday");
-                                break;
-                            case 3:
-                                lcd.print("Day: Thursdsay");
-                                break;
-                            case 4:
-                                lcd.print("Day: Friday");
-                                break;
-                            case 5:
-                                lcd.print("Day: Saturday");
-                                break;
-                            case 6:
-                                lcd.print("Day: Sunday");
-                                break;
+                        printText(lcd, 0, 1, "Day: ");
+
+                        if (_dayIndex == 6) {
+                            strcpy_P(_buffer, (const char*)DAYS_TO_TEXT[0]);
+                        } else {
+                            strcpy_P(_buffer, (const char*)DAYS_TO_TEXT[_dayIndex + 1]);
                         }
+                        lcd.print(_buffer);
 
                         if (currentChannel.data.weekMode.days[_dayIndex].enabled) {
-                        lcd.setCursor(18, 1);
-                        lcd.print("On");
+                        printText(lcd, 18, 1, "On");
+                        printText(lcd, 0, 2, "Start: ");
 
-                        lcd.setCursor(0, 2);
-                        lcd.print("Start: ");
-                        //_dayIndex = 0;
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
                         lcd.print(':');
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
@@ -1131,8 +981,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].startSecond, lcd, 13, 2);
                         lcd.print('s');
 
-                        lcd.setCursor(0, 3);
-                        lcd.print("End: ");
+                        printText(lcd, 0, 3, "End");
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].endHour, lcd, 5, 3);
                         lcd.print(':');
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].endMinute, lcd, 8, 3);
@@ -1140,16 +989,12 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         print2digits(currentChannel.data.weekMode.days[_dayIndex].endSecond, lcd, 11, 3);
                         lcd.print('s');
                         } else {
-                            lcd.setCursor(17, 1);
-                            lcd.print("Off");
+                            printText(lcd, 17, 1, "Off");
                         }
-
                         break;
                 }
-            lcd.setCursor(15, 0);
-            lcd.print(">Back");
+            printText(lcd, 15, 0, ">Back");
             break;
-
         }
         _first = 0;
     }
@@ -1161,30 +1006,22 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
         case MAIN_MENU:
          
             if (_changedFlag) { // 
-                lcd.setCursor(11, 0);
-                lcd.print(" ");
-                lcd.setCursor(12, 1);
-                lcd.print(" ");
-                lcd.setCursor(12, 2);
-                lcd.print(" ");
+                replaceSymbol(lcd, 11, 0, ' ');
+                replaceSymbol(lcd, 12, 1, ' ');
+                replaceSymbol(lcd, 12, 2, ' ');
 
             switch (_count) {
                 case 0:
-                    lcd.setCursor(11, 0);
-                    lcd.print('>');
+                    replaceSymbol(lcd, 11, 0, '>');
                     break;
                 case 1:
-                    lcd.setCursor(12, 1);
-                    lcd.print('>');
+                    replaceSymbol(lcd, 12, 1, '>');
                     break;
                 case 2:
-                    lcd.setCursor(12, 2);
-                    lcd.print('>');
-                    break; }
-           
-
+                    replaceSymbol(lcd, 12, 2, '>');
+                    break; 
+            }
             _changedFlag = 0; }
-
             break;
 
         case CHANNELS:
@@ -1193,167 +1030,77 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 
                 switch (_indexFlag) { // Switch to detect last arrow pos and clearing it
                     case 0:
-                        lcd.setCursor(0, 0);
-                        lcd.print("          ");
-                        lcd.setCursor(0, 0);
-                        lcd.print("Channel ");
+                        printText(lcd, 0, 0, "          ");
+                        printText(lcd, 0, 0, "Channel ");
                         lcd.print(_count);
                         break;
                     case 1:
                         if (currentChannel.mode != OFF) { // On/Off selector
-                            lcd.setCursor(16, 0);
-                            lcd.print("   ");
-                            lcd.setCursor(18, 0);
-                            lcd.print("On");
+                            printText(lcd, 16, 0, "    ");
+                            printText(lcd, 18, 0, "On");
                         } else {
-                            lcd.setCursor(16, 0);
-                            lcd.print("    ");
-                            lcd.setCursor(17, 0);
-                            lcd.print("Off"); }
-                        
-
+                            printText(lcd, 16, 0, "     ");
+                            printText(lcd, 17, 0, "Off"); }
                         break;
 
                     case 2: // Mode selector
-                        switch (currentChannel.mode) {
-                            case TIMER:
-                                lcd.setCursor(0, 1);
-                                lcd.print("                    ");
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Timer>");
-                                break;
-                                    
-                            case PID:
-                                lcd.setCursor(0, 1);
-                                lcd.print("                    ");
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <PID>");
-                                break;
-                                   
-                            case DAY:
-                                lcd.setCursor(0, 1);
-                                lcd.print("                    ");
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Day>");
-                                break;
-
-                            case SENSOR:
-                                lcd.setCursor(0, 1);
-                                lcd.print("                    ");
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Sensor>");
-                                break;
-                            
-                            case WEEK:
-                                lcd.setCursor(0, 1);
-                                lcd.print("                    ");
-                                lcd.setCursor(0, 1);
-                                lcd.print("Mode: <Week>");
-                                break;
-                            }
+                        clearRow(lcd, 1);
+                        printMode(lcd, 0, 1, (uint8_t)currentChannel.mode);
                         break;
 
                     case 3:
-                        lcd.setCursor(0, 2);
-                        lcd.print("                   ");
-                        lcd.setCursor(0, 2);
+                        clearRow(lcd, 2);
                         if (currentChannel.relayMode == TO_ON) {
-                            lcd.print("Direction: Off-On");
+                            printText(lcd, 0, 2, "Direction: Off-On");
                         }
                         else {
-                            lcd.print("Direction: On-Off");
+                            printText(lcd, 0, 2, "Direction: On-Off");
                         }
                         break;
 
                     case 4: // Back
-                        lcd.setCursor(15, 3);
-                        lcd.print("     ");
-                        lcd.setCursor(16, 3);
-                        lcd.print("Back");
+                        printText(lcd, 15, 3, "     ");
+                        printText(lcd, 16, 3, "Back");
                         break;
-                    
+                    }
                     #if LOG
                     Serial.println(F("Removing old arrow"));
                     #endif
-                        }
+                        
                 
                 /* Inserting new arrow in new position */
 
                 switch (_index) {
                     case 0:
-                        lcd.setCursor(0, 0);
-                        lcd.print("         ");
-                        lcd.setCursor(0, 0);
-                        lcd.print(">Channel ");
+                        printText(lcd, 0, 0, "         ");
+                        printText(lcd, 0, 0, ">Channel ");
                         lcd.print(_count);
                         break;
                     case 1:
                         if (currentChannel.mode != OFF) { // On/Off selector
-                            lcd.setCursor(17, 0);
-                            lcd.print('>');
+                            replaceSymbol(lcd, 17, 0, '>');
                         } else {
-                            lcd.setCursor(16, 0);
-                            lcd.print('>');
+                            replaceSymbol(lcd, 16, 0, '>');
                         }
-
                         break;
 
                     case 2: // Mode selector
-                        switch (currentChannel.mode) {
-                            case TIMER:
-                                lcd.setCursor(0, 1);
-                                lcd.print("             ");
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Timer>");
-                                break;
-                                    
-                            case PID:
-                                lcd.setCursor(0, 1);
-                                lcd.print("          ");
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <PID>");
-                                break;
-                                   
-                            case DAY:
-                                lcd.setCursor(0, 1);
-                                lcd.print("              ");
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Day>");
-                                break;
-                            
-                            case SENSOR:
-                                lcd.setCursor(0, 1);
-                                lcd.print("              ");
-                                lcd.setCursor(0, 1);
-                                lcd.print(">Mode: <Sensor>");
-                                break;
-
-                            case WEEK:
-                                lcd.setCursor(0, 1);                            
-                                lcd.print("              ");
-                                lcd.setCursor(0, 1);                            
-                                lcd.print(">Mode: <Week>");
-                                break;
-
-                            }
+                        replaceSymbol(lcd, 0, 1, '>');
+                        printMode(lcd, 1, 1, (uint8_t)currentChannel.mode);
                         break;
 
                     case 3:
-                        lcd.setCursor(0, 2);
-                        lcd.print("                   ");
-                        lcd.setCursor(0, 2);
+                        clearRow(lcd, 2);
                         if (currentChannel.relayMode == TO_ON) {
-                            lcd.print("Direction:>Off-On");
+                            printText(lcd, 0, 2, "Direction:>Off-On");
                         }
                         else {
-                            lcd.print("Direction:>On-Off");
+                            printText(lcd, 0, 2, "Direction:>On-Off");
                         }
                         break;
 
-
                     case 4: // Back
-                        lcd.setCursor(15, 3);
-                        lcd.print('>');
+                        replaceSymbol(lcd, 15, 3, '>');
                         break;
                     
                     #if LOG
@@ -1364,21 +1111,17 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                 _changedFlag = 0;
             }
             break;
-            
         // ==================================== MODES =======================================
         
         case MODES:
             if (millis() - _tmr > 300 && (currentChannel.mode == SENSOR || currentChannel.mode == PID)) {
                 if (currentChannel.mode == SENSOR) {
-                lcd.setCursor(14, 3);
-                lcd.print("      ");
+                printText(lcd, 14, 3, "      ");
                 lcd.setCursor(14, 3);
                 } else if (currentChannel.mode == PID) {
-                lcd.setCursor(16, 3);
-                lcd.print("    ");
+                printText(lcd, 16, 3, "    ");
                 lcd.setCursor(16, 3);
                 }
-
                 lcd.print(analogRead(currentChannel.data.sensorMode.pin));
                 _tmr = millis();
             }
@@ -1389,32 +1132,25 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 
                         switch (_indexFlag) {
                             case 0:
-                                lcd.setCursor(15, 0);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 15, 0, ' ');
                                 break;
                             case 1:
-                                lcd.setCursor(6, 1);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 6, 1, ' ');
                                 break;
                             case 2:
-                                lcd.setCursor(9, 1);
-                                lcd.print(':');
+                                replaceSymbol(lcd, 9, 1, ':');
                                 break;
                             case 3:
-                                lcd.setCursor(12, 1);
-                                lcd.print('.');
+                                replaceSymbol(lcd, 12, 1, '.');
                                 break;
                             case 4:
-                                lcd.setCursor(4, 2);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 4, 2, ' ');
                                 break;
                             case 5:
-                                lcd.setCursor(7, 2);
-                                lcd.print(':');
+                                replaceSymbol(lcd, 7, 2, ':');
                                 break;
                             case 6:
-                                lcd.setCursor(10, 2);
-                                lcd.print('.');
+                                replaceSymbol(lcd, 10, 2, '.');
                                 break;
                         } // clearing after arrow shift
 
@@ -1528,19 +1264,14 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 break;
                         }
                         lcd.print('>');
-
-
                         break;
 
                     case WEEK:
 
                         if (_oneByte & (1 << 7)) {
                             if (currentChannel.data.weekMode.days[_dayIndex].enabled) { // if its on
-                                lcd.setCursor(16, 1);
-                                lcd.print("    "); // clearing
-
-                                lcd.setCursor(17, 1);
-                                lcd.print(">On");
+                                printText(lcd, 16, 1, "    ");
+                                printText(lcd, 17, 1, ">On");
 
                                 if (currentChannel.data.weekMode.days[_dayIndex].startHour > 23) currentChannel.data.weekMode.days[_dayIndex].startHour = 0;
                                 if (currentChannel.data.weekMode.days[_dayIndex].startMinute > 59) currentChannel.data.weekMode.days[_dayIndex].startMinute = 0;
@@ -1550,8 +1281,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 if (currentChannel.data.weekMode.days[_dayIndex].endMinute > 59) currentChannel.data.weekMode.days[_dayIndex].endMinute = 0;
                                 if (currentChannel.data.weekMode.days[_dayIndex].endSecond > 23) currentChannel.data.weekMode.days[_dayIndex].endSecond = 0;
 
-                                lcd.setCursor(0, 2);
-                                lcd.print("Start: ");
+                                printText(lcd, 0, 2, "Start: ");
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
                                 lcd.print(':');
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
@@ -1559,8 +1289,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].startSecond, lcd, 13, 2);
                                 lcd.print('s');
 
-                                lcd.setCursor(0, 3);
-                                lcd.print("End: ");
+                                printText(lcd, 0, 3, "End: ");
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].endHour, lcd, 5, 3);
                                 lcd.print(':');
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].endMinute, lcd, 8, 3);
@@ -1570,19 +1299,13 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 
 
                             } else {
-                                lcd.setCursor(16, 1);
-                                lcd.print("    "); // clearing
+                                printText(lcd, 16, 1, "    ");
 
-                                lcd.setCursor(16, 1);
-                                lcd.print(">Off");
+                                printText(lcd, 16, 1, ">Off");
 
-                                lcd.setCursor(0, 2);
-                                lcd.print("                   ");
-                                lcd.setCursor(0, 3);
-                                lcd.print("                   ");
-
+                                clearRow(lcd, 2);
+                                clearRow(lcd, 3);
                             }
-
                             _oneByte &= 127;
                             _changedFlag = 0;
                         }
@@ -1590,12 +1313,10 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 
                         switch (_indexFlag) {
                             case 0:
-                                lcd.setCursor(15, 0);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 15, 0, ' ');
                                 break;
                             case 1:
-                                lcd.setCursor(4, 1);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 4, 1, ' ');
                                 break;
                             case 2:
                                 if (currentChannel.data.weekMode.days[_dayIndex].enabled) lcd.setCursor(17, 1);
@@ -1604,35 +1325,28 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.print(' ');
                                 break;
                             case 3:
-                                lcd.setCursor(6, 2);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 6, 2, ' ');
                                 break;
                             case 4:
-                                lcd.setCursor(9, 2);
-                                lcd.print(':');
+                                replaceSymbol(lcd, 9, 2, ':');
                                 break;
                             case 5:
-                                lcd.setCursor(12, 2);
-                                lcd.print('.');
+                                replaceSymbol(lcd, 12, 2, '.');
                                 break;
                             case 6:
-                                lcd.setCursor(4, 3);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 4, 3, ' ');
                                 break;
                             case 7:
-                                lcd.setCursor(7, 3);
-                                lcd.print(':');
+                                replaceSymbol(lcd, 7, 3, ':');
                                 break;
                             case 8:
-                                lcd.setCursor(10, 3);
-                                lcd.print('.');
+                                replaceSymbol(lcd, 10, 3, '.');
                                 break;
                         }
 
                         switch (_index) {
                             case 0:
                                 lcd.setCursor(14, 0);
-                                lcd.print(' ');
                                 break;
                             case 1:
                                 lcd.setCursor(4, 1);
@@ -1662,49 +1376,26 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 break;
                         }
 
-
                         lcd.print('>');
 
                         if (_dayIndex != _dayIndexFlag) {
                             // cleaning
-                            lcd.setCursor(0, 1);
-                            lcd.print("                   ");
-                            lcd.setCursor(0, 2);
-                            lcd.print("                   ");
-                            lcd.setCursor(0, 3);
-                            lcd.print("                   ");
+                            for (uint8_t i = 1; i < 3; ++i) clearRow(lcd, i);
                             
                             lcd.setCursor(0, 1);
-                            switch (_dayIndex) {
-                                case 0: // monday
-                                    lcd.print("Day:>Monday");
-                                    break;
-                                case 1: // tuesday 
-                                    lcd.print("Day:>Tuesday");
-                                    break;
-                                case 2: // Wednesday
-                                    lcd.print("Day:>Wednesday");
-                                    break;
-                                case 3: // Thursday
-                                    lcd.print("Day:>Thursday");
-                                    break;
-                                case 4: // Friday
-                                    lcd.print("Day:>Friday");
-                                    break;
-                                case 5: // Satruday
-                                    lcd.print("Day:>Satruday");
-                                    break;
-                                case 6: // Sunday
-                                    lcd.print("Day:>Sunday");
-                                    break;
+                            printText(lcd, 0, 1, "Day:>");
+                            if (_dayIndex == 6) {
+                                strcpy_P(_buffer, (const char*)DAYS_TO_TEXT[0]);
+                            } else {
+                                strcpy_P(_buffer, (const char*)DAYS_TO_TEXT[_dayIndex + 1]);
                             }
+                            
+                            printText(lcd, 5, 1, _buffer);
 
                             if (currentChannel.data.weekMode.days[_dayIndex].enabled) {
-                                lcd.setCursor(18, 1);
-                                lcd.print("On");
+                                printText(lcd, 18, 1, "On");
 
-                                lcd.setCursor(0, 2);
-                                lcd.print("Start: ");
+                                printText(lcd, 0, 2, "Start: ");
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
                                 lcd.print(':');
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
@@ -1712,8 +1403,7 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].startSecond, lcd, 13, 2);
                                 lcd.print('s');
 
-                                lcd.setCursor(0, 3);
-                                lcd.print("End: ");
+                                printText(lcd, 0, 3, "End: ");
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].endHour, lcd, 5, 3);
                                 lcd.print(':');
                                 print2digits(currentChannel.data.weekMode.days[_dayIndex].endMinute, lcd, 8, 3);
@@ -1722,10 +1412,8 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                                 lcd.print('s');
 
                             } else {
-                                lcd.setCursor(17, 1);
-                                lcd.print("Off");
+                                printText(lcd, 17, 1, "Off");
                             }
-
                             _dayIndexFlag = _dayIndex;
                         }
 
@@ -1735,40 +1423,31 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                     case PID:
                         switch (_indexFlag) {
                             case 0:
-                                lcd.setCursor(15, 0);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 15, 0, ' ');
                                 break;
                             case 1:
-                                lcd.setCursor(3, 1);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 3, 1, ' ');
                                 break;
                             case 2:
-                                lcd.setCursor(6, 1);
-                                lcd.print('.');
+                                replaceSymbol(lcd, 6, 1, '.');
                                 break;
                             case 3:
-                                lcd.setCursor(3, 2);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 3, 2, ' ');
                                 break;
                             case 4:
-                                lcd.setCursor(6, 2);
-                                lcd.print('.');
+                                replaceSymbol(lcd, 6, 2, '.');
                                 break;
                             case 5:
-                                lcd.setCursor(3, 3);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 3, 3, ' ');
                                 break;
                             case 6:
-                                lcd.setCursor(6, 3);
-                                lcd.print('.');
+                                replaceSymbol(lcd, 6, 3, '.');
                                 break;
                             case 7:
-                                lcd.setCursor(15, 1);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 15, 1, ' ');
                                 break;
                             case 8:
-                                lcd.setCursor(15, 2);
-                                lcd.print(' ');
+                                replaceSymbol(lcd, 15, 2, ' ');
                                 break;
                         }
 
@@ -1806,9 +1485,6 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                         break;
                         
                     }
-
-
-
             }
 	_changedFlag = 0;
 
@@ -1817,40 +1493,35 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 
 		case TIMER:
             if (_oneByte & (1 << 0)) {
-                lcd.setCursor(8, 1);
-                lcd.print("  ");
+                printText(lcd, 8, 1, "  ");
 
                 print2digits(currentChannel.data.timerMode.periodHour, lcd, 8, 1);
                 _oneByte &= 254;
             }
 
             if (_oneByte & 1 << 1) {
-                lcd.setCursor(12, 1);
-                lcd.print("  ");
+                printText(lcd, 12, 1, "  ");
 
                 print2digits(currentChannel.data.timerMode.periodMinute, lcd, 12, 1);
                 _oneByte &= 253;
             }
 
             if (_oneByte & 1 << 2) {
-                lcd.setCursor(16, 1);
-                lcd.print("  ");
+                printText(lcd, 16, 1, "  ");
 
                 print2digits(currentChannel.data.timerMode.periodSecond, lcd, 16, 1);
                 _oneByte &= 251;
             }
 
             if (_oneByte & (1 << 3)) {
-                lcd.setCursor(6, 2);
-                lcd.print("  ");
+                printText(lcd, 6, 2, "  ");
                 
                 print2digits(currentChannel.data.timerMode.workMinute, lcd, 6, 2);
                 _oneByte &= 247;
             }
 
             if (_oneByte & (1 << 4)) {
-                lcd.setCursor(10, 2);
-                lcd.print("  ");
+                printText(lcd, 10, 2, "  ");
 
                 print2digits(currentChannel.data.timerMode.workSecond, lcd, 10, 2);
                 _oneByte &= 239;
@@ -1858,61 +1529,52 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
 			break;
 
 		case DAY:
-
             if (_oneByte & (1 << 0))  {
-			    lcd.setCursor(7, 1);
-			    lcd.print("  ");
+                printText(lcd, 7, 1, "  ");
 
                 print2digits(currentChannel.data.dayMode.startHour, lcd, 7, 1);
                 _oneByte &= 254;
             }
 
             if (_oneByte & (1 << 1)) {
-			    lcd.setCursor(10, 1);
-			    lcd.print("  ");
+                printText(lcd, 10, 1, "  ");
 
 			    print2digits(currentChannel.data.dayMode.startMinute, lcd, 10, 1);
                 _oneByte &= 253;
             }
 
             if (_oneByte & (1 << 2)) {
-			    lcd.setCursor(13, 1);
-			    lcd.print("  ");
+                printText(lcd, 13, 1, "  ");
 
 			    print2digits(currentChannel.data.dayMode.startSecond, lcd, 13, 1);
                 _oneByte &= 251;
             }
 
             if (_oneByte & (1 << 3)) {
-			    lcd.setCursor(5, 2);
-			    lcd.print("  ");
+                printText(lcd, 5, 2, "  ");
 
 			    print2digits(currentChannel.data.dayMode.endHour, lcd, 5, 2);
                 _oneByte &= 247;
             }
 
             if (_oneByte & (1 << 4)) {
-			    lcd.setCursor(8, 2);
-			    lcd.print("  ");
+                printText(lcd, 8, 2, "  ");
 
 			    print2digits(currentChannel.data.dayMode.endMinute, lcd, 8, 2);
                 _oneByte &= 239;
             }
 
             if (_oneByte & (1 << 5)) {
-			    lcd.setCursor(11, 2);
-			    lcd.print("  ");
+                printText(lcd, 11, 2, "  ");
 
 			    print2digits(currentChannel.data.dayMode.endSecond, lcd, 11, 2);
                 _oneByte &= 223;
             }
-
 			break;
 
 		case SENSOR:
             if (_oneByte & (1 << 0)) {
-                lcd.setCursor(11, 1);
-                lcd.print("         ");
+                printText(lcd, 11, 1, "         ");
 
                 lcd.setCursor(11, 1);
                 lcd.print(currentChannel.data.sensorMode.threshold);
@@ -1921,24 +1583,20 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
             }
 
             if (_oneByte & (1 << 1)) {
-                lcd.setCursor(6, 2);
-                lcd.print("  ");
+                printText(lcd, 6, 2, "  ");
 
                 print2digits(currentChannel.data.sensorMode.workMinute, lcd, 6, 2);
                 _oneByte &= 253;
             }
 
             if (_oneByte & (1 << 2)) {
-                lcd.setCursor(10, 2);
-                lcd.print("  ");
+                printText(lcd, 10, 2, "  ");
 
                 print2digits(currentChannel.data.sensorMode.workSecond, lcd, 10, 2);
                 _oneByte &= 251;
             }
 
             if (_oneByte & (1 << 3)) {
-                lcd.setCursor(6, 3);
-                lcd.print(' ');
                 lcd.setCursor(6, 3);
                 
                 switch (currentChannel.data.sensorMode.pin) {
@@ -1961,97 +1619,80 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                         lcd.print('7');
                         break;
                 }
-                lcd.setCursor(14, 3);
-                lcd.print("      ");
+                printText(lcd, 14, 3, "      ");
                 lcd.setCursor(14, 3);
                 lcd.print(analogRead(currentChannel.data.sensorMode.pin));
                 _oneByte &= 247;
             }
-
 			break;
 
         case WEEK:
             if (_oneByte & (1 << 0))  {
-			    lcd.setCursor(7, 2);
-			    lcd.print("  ");
+                printText(lcd, 7, 2, "  ");
 
                 print2digits(currentChannel.data.weekMode.days[_dayIndex].startHour, lcd, 7, 2);
                 _oneByte &= 254;
             }
 
             if (_oneByte & (1 << 1)) {
-			    lcd.setCursor(10, 2);
-			    lcd.print("  ");
+                printText(lcd, 10, 2, "  ");
 
 			    print2digits(currentChannel.data.weekMode.days[_dayIndex].startMinute, lcd, 10, 2);
                 _oneByte &= 253;
             }
 
             if (_oneByte & (1 << 2)) {
-			    lcd.setCursor(13, 2);
-			    lcd.print("  ");
+                printText(lcd, 13, 2, "  ");
 
 			    print2digits(currentChannel.data.weekMode.days[_dayIndex].startSecond, lcd, 13, 2);
                 _oneByte &= 251;
             }
 
             if (_oneByte & (1 << 3)) {
-			    lcd.setCursor(5, 3);
-			    lcd.print("  ");
+                printText(lcd, 5, 2, "  ");
 
 			    print2digits(currentChannel.data.weekMode.days[_dayIndex].endHour, lcd, 5, 3);
                 _oneByte &= 247;
             }
 
             if (_oneByte & (1 << 4)) {
-			    lcd.setCursor(8, 3);
-			    lcd.print("  ");
+                printText(lcd, 8, 3, "  ");
 
 			    print2digits(currentChannel.data.weekMode.days[_dayIndex].endMinute, lcd, 8, 3);
                 _oneByte &= 239;
             }
 
             if (_oneByte & (1 << 5)) {
-			    lcd.setCursor(11, 3);
-			    lcd.print("  ");
+                printText(lcd, 11, 3, "  ");
 
 			    print2digits(currentChannel.data.weekMode.days[_dayIndex].endSecond, lcd, 11, 3);
                 _oneByte &= 223;
             }
-
             break;
 
 		case PID:
             if (_oneByte & (1 << 0) || _oneByte & (1 << 1)) {
-                lcd.setCursor(4, 1);
-                lcd.print("     ");
-                //lcd.setCursor(4, 1);
+                printText(lcd, 4, 1, "     ");
                 printFloat(currentChannel.data.PidMode.Kp, lcd, 4, 1);
-
                 _oneByte &= ~((1 << 0) | (1 << 1));
             }
 
             if (_oneByte & (1 << 2) || _oneByte & (1 << 3)) {
-                lcd.setCursor(4, 2);
-                lcd.print("     ");
-                //lcd.setCursor(4, 2);
+                printText(lcd, 4, 2, "     ");
                 printFloat(currentChannel.data.PidMode.Ki, lcd, 4, 2);
 
                 _oneByte &= ~((1 << 2) | (1 << 3));
             }
 
             if (_oneByte & (1 << 4) || _oneByte & (1 << 5)) {
-                lcd.setCursor(4, 3);
-                lcd.print("     ");
-                //lcd.setCursor(4, 3);
+                printText(lcd, 4, 3, "     ");
                 printFloat(currentChannel.data.PidMode.Kd, lcd, 4, 3);
 
                 _oneByte &= ~((1 << 4) | (1 << 5));
             }
             
             if (_oneByte & (1 << 6)) {
-                lcd.setCursor(16, 1);
-                lcd.print("    ");
+                printText(lcd, 16, 1, "    ");
                 lcd.setCursor(16, 1);
                 lcd.print(currentChannel.data.PidMode.setPoint);
 
@@ -2059,8 +1700,6 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
             }
 
             if (_oneByte & (1 << 7)) {
-                lcd.setCursor(17, 2);
-                lcd.print(' ');
                 lcd.setCursor(17, 2);
                 
                 switch (currentChannel.data.PidMode.pin) {
@@ -2086,20 +1725,23 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                         lcd.print('0');
                         break;
                 }
-                lcd.setCursor(16, 3);
-                lcd.print("    ");
+                printText(lcd, 16, 3, "    ");
                 lcd.setCursor(16, 3);
                 lcd.print(analogRead(currentChannel.data.PidMode.pin));
                 _oneByte &= ~(1 << 7);                    
                 
             }
-
-
 			break;
-		
-		}		
-	_settingsChanged = 0;
-	}
+		    }		
+	    _settingsChanged = 0;   
+	    }
        break;
     }
+}
+
+void ArrowControl::printMode(LiquidCrystal_I2C& lcd, uint8_t x, uint8_t y, uint8_t modeNum) {
+    strcpy_P(_buffer, (const char*)&MODE_STR);
+    printText(lcd, x, y, _buffer);
+    strcpy_P(_buffer, (const char*)MODES_TO_TEXT[modeNum - 1]);
+    printText(lcd, x + 5, y, _buffer);
 }

@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
 #include "lib/rtc/RtcDateTime.h"
+#include "utils.h"
 
 #define countof(a) (sizeof((a)) / sizeof((a)[0]))
 
@@ -17,22 +18,13 @@ uint8_t LMB[8] = {0b11111,  0b00000,  0b00000,  0b00000,  0b00000,  0b11111,  0b
 const char* days[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
 void drawMainMenu(LiquidCrystal_I2C& lcd, float temperature, float humidity, float pressure) {
-    lcd.setCursor(5, 2);
-    lcd.print("    ");
-    lcd.setCursor(5, 2);
-    lcd.print(temperature);
-
-    lcd.setCursor(4, 3);
-    lcd.print("      ");
-    lcd.setCursor(4, 3);
-    lcd.print(humidity);
+    printText(lcd, 5, 2, "    ");
+    printText(lcd, 5, 2, temperature);
+    printText(lcd, 4, 3, "      ");
+    printText(lcd, 4, 3, humidity);
     lcd.print('%');
-
-    lcd.setCursor(12, 2);
-    lcd.print("Pressre:");
-
-    lcd.setCursor(11, 3);
-    lcd.print(pressure);
+    printText(lcd, 12, 2, "Pressre:");
+    printText(lcd, 11, 3, pressure);
 }
 
 
@@ -155,11 +147,8 @@ void loadClock(LiquidCrystal_I2C& lcd) {
 }
 
 void updateTime(LiquidCrystal_I2C& lcd, RtcDateTime& time) {
-
-    lcd.setCursor(0, 0);
-    lcd.print("               ");
-    lcd.setCursor(0, 1);
-    lcd.print("               ");
+    clearRow(lcd, 0);
+    clearRow(lcd, 1);
 
     const uint8_t day = time.Day();
     const uint8_t month = time.Month();
@@ -171,8 +160,7 @@ void updateTime(LiquidCrystal_I2C& lcd, RtcDateTime& time) {
     lcd.print(month % 10);
 
     const uint8_t weekDay = time.DayOfWeek();
-    lcd.setCursor(17, 1);
-    lcd.print(days[weekDay]);
+    printText(lcd, 17, 1, days[weekDay]);
 
     const uint8_t hour = time.Hour();
     drawDig(hour / 10, 0, 0, lcd);

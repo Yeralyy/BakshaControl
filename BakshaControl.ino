@@ -16,7 +16,6 @@ Author: @Yeralyy
 #define BUF_SIZE 64
 #define INTERRUPT_PIN 3
 #endif
-#define INTERRUPT_PIN 3
 
 #if ESP32
 #include <SoftwareSerial.h>
@@ -212,10 +211,7 @@ void loop() {
   if (Serial.available()) {
     sim800l.write(Serial.read());
   }
-
-  
-
-  #else
+  #endif
   RtcDateTime now = rtc.GetDateTime();
   scheduelerTick(now);
   enc.tick(); // encoder handler
@@ -258,46 +254,4 @@ void loop() {
       arrow.modesTick(enc, lcd, state);
       break;
   }
-
-  
-
-  #if ESP32
-  
-  /* ARDUINO-ESP32 communication protocol */
-
-  /*
-  API:  
-
-  Get:<key><request> e.g: gt (get temperature)
-  
-  
-  */
-
-  if (esp32.available() > 1) {
-    char key = esp32.read(); // key value
-    char request = esp32.read(); // requset value
-    
-    if (key == 'g') {
-      switch (request) {
-        case 't': // temperature
-          esp32.write('G')
-          esp32.print(bme.readTemperature());
-          break;
-        case 'h': // humidity
-          esp32.write('G')
-          esp32.print(bme.readHumidity());
-          break;
-        case 'p': // pressure
-          esp32.write('G')
-          esp32.print(bme.readHumidity());
-          break;
-      }
-    }
-
-  }
-  
-  #endif
-
-  
-  #endif
-}
+} 

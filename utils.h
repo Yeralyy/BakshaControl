@@ -50,3 +50,19 @@ void settingsHandle(encMinim& enc, T& data, K minValue, K maxValue, K fastValue,
 
 	constraining(data, minValue, maxValue);
 }
+
+void replaceSymbol(LiquidCrystal_I2C& lcd, uint8_t x, uint8_t y, char replace) {
+    lcd.setCursor(x, y);
+    lcd.print(replace);
+}
+
+template <typename T>
+void printText(LiquidCrystal_I2C& lcd, uint8_t x, uint8_t y, T dump) {
+    lcd.setCursor(x, y);
+    lcd.print(dump);
+}
+
+void clearRow(LiquidCrystal_I2C& lcd, uint8_t y) {
+    lcd.setCursor(0, y);
+    lcd.print("                    ");
+}
