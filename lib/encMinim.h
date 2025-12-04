@@ -49,6 +49,7 @@ encMinim::encMinim(uint8_t clk, uint8_t dt, int8_t sw, boolean dir, boolean type
   pinMode(_clk, INPUT);
   pinMode(_dt, INPUT);
   pinMode(_sw, INPUT_PULLUP); // для режима без кнопки
+  
 }
 
 void encMinim::tick(bool hold) {

@@ -4,6 +4,11 @@ Author: @Yeralyy
 */
 
 #include "CONFIG.h"  
+
+#if nRF
+#include <SPI.h>
+#endif
+
 #include "states.h"
 #include "lib/encMinim.h"
 #include "lib/rtc/RtcDS1302.h"
@@ -34,7 +39,6 @@ Author: @Yeralyy
 #define ONE_HOUR  36000000UL // 1hour = 60 minute = 3600 sec = 36 000 000 milliseconds
 
 #define PID_DT 100 // 100 milliseconds
-
 #define SW 8
 
 
@@ -44,6 +48,10 @@ ThreeWire myWire(4, 5, 2);
 RtcDS1302<ThreeWire> rtc(myWire);
 GyverBME280 bme;
 ArrowControl arrow;
+
+#if nRF
+RF24 radio(9, 10);
+#endif
 
 #if SIM800L
 SoftwareSerial sim800l(11, 12); // 13 - TX, 12 - RX

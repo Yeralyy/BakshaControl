@@ -22,11 +22,9 @@ const char* MODES_TO_TEXT[5] = {
     "<Timer>", "<PID>", "<Day>", "<Week>", "<Sensor>" 
 };
 
-const char DIRECTION_STR[] = "Direction:";
 
 const char WORK_STR[] = "Work: ";
 const char PERIOD_STR[] = "Period: ";
-const char LEFT_STR[] = "Left: ";
 
 const char SETPOINT_STR[] = "Set:";
 const char PIN_STR[] = "Pin:";
@@ -79,9 +77,6 @@ class ArrowControl {
         void updateDisplay(LiquidCrystal_I2C& lcd, FSM& state);
         void constrainHelper();
         void switchHelper(encMinim& enc, const bool isRight);
-        
-        //void calculateLeft(LiquidCrystal_I2C& lcd, FSM& state);
-        //void constrainModes(void);
 
         void printMode(LiquidCrystal_I2C& lcd, uint8_t x, uint8_t y, uint8_t modeNum);
 };
@@ -91,59 +86,12 @@ class ArrowControl {
 
 void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  {
     redrawDisplay(lcd, state);
-
-    /*
-    if (enc.isTurn()) {
-        if (enc.isRight()) ++_count;
-        if (enc.isLeft()) --_count;
-        _changedFlag = 1;  
-        #if LOG
-        Serial.println(F("MAIN_MENU:Enc t"));
-        #endif
-    }
-        */
-
-
     if (enc.isTurn() || enc.isClick()) {
-        /*
-        switch (_count) {
-            case 0:
-                state = CHANNELS;
-                _count = 1;
-                #if LOG
-                Serial.println(F("State->CHANNELS"));
-                #endif
-
-                break;
-            case 1:
-                state = SERVICE;
-                #if LOG
-                Serial.println(F("State->SERVICE"));
-                #endif
-
-                break;
-            case 2:
-                state = SENSORS; // FSM& 
-                #if LOG
-                Serial.println(F("State->DAY"));
-                #endif
-
-                break;
-        }
-        */
         state = CHANNELS;
         _scrollFlag = 1;
         lcd.clear(); // clean display
         _first = 1;
     }
-
-    /*
-    if (_count < 0) _count = 2;
-    if (_count > 2) _count = 0;
-    */
-
-    //updateDisplay(lcd, state); // arrows
-
 }
 
 void ArrowControl::constrainHelper() {
@@ -458,7 +406,12 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
         // ==================================== ARROW TRACKING ==============================
         if (_index == 0 && enc.isClick()) {
-            _scrollFlag = !_scrollFlag;
+            if (_scrollFlag) {
+                _scrollFlag = 0;
+            } else {
+                _scrollFlag = 1;
+                putChannel(_count, currentChannel);
+            }
         }
 
         if (_scrollFlag) {
@@ -851,8 +804,6 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                         print2digits(currentChannel.data.timerMode.workSecond, lcd, 10, 2);
                         lcd.print('s');
                         
-                        //lcd.setCursor(0, 3);
-                        //lcd.print("Left: 00h 00m 00s");
                         break;
 
                     case PID: 
