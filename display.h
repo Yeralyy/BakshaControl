@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
-#include "lib/rtc/RtcDateTime.h"
+#include <RtcDateTime.h>
 #include "utils.h"
 
 #define countof(a) (sizeof((a)) / sizeof((a)[0]))

@@ -11,7 +11,9 @@ Author: @Yeralyy
 
 #include "states.h"
 #include "lib/encMinim.h"
-#include "lib/rtc/RtcDS1302.h"
+#include <Wire.h>
+#include <RtcDS3231.h>
+
 #include <GyverBME280.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -41,11 +43,10 @@ Author: @Yeralyy
 #define PID_DT 100 // 100 milliseconds
 #define SW 8
 
+RtcDS3231<TwoWire> rtc(Wire);
 
 encMinim enc(6, 7, 8, 0);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
-ThreeWire myWire(4, 5, 2);
-RtcDS1302<ThreeWire> rtc(myWire);
 GyverBME280 bme;
 ArrowControl arrow;
 
@@ -131,7 +132,6 @@ void setup() {
     rtc.SetDateTime(compiled);
   }
 
-  if (rtc.GetIsWriteProtected()) rtc.SetIsWriteProtected(false);
   if (!rtc.GetIsRunning()) rtc.SetIsRunning(true);
 
   #if SET_TIME

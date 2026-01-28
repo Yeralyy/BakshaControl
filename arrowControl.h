@@ -2,7 +2,7 @@
 #include "lib/encMinim.h"
 #include <LiquidCrystal_I2C.h>
 #include "eeprom_control.h"
-#include "lib/rtc/RtcDateTime.h"
+#include <RtcDateTime.h>
 #include "utils.h"
 
 

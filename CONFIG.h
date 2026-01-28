@@ -9,7 +9,7 @@ File for defining config values
 #define ESP32 0
 #define nRF 0
 
-#define SET_TIME 0 // Set 1 and flash to set time, 0 - nothing
+#define SET_TIME 1 // Set 1 and flash to set time, 0 - nothing
 
 #define TEST 0
 #define INIT_EEPROM 0

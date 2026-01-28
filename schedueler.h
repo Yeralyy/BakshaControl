@@ -1,6 +1,6 @@
 #pragma once
 #include "eeprom_control.h"
-#include "lib/rtc/RtcDS1302.h"
+#include <RtcDS3231.h>
 
 
 void scheduelerTick(RtcDateTime& now);
