@@ -6,7 +6,23 @@ Author: @Yeralyy
 #include "CONFIG.h"  
 
 #if nRF
-#include <SPI.h>
+
+#include "nrf.h"
+
+#if TEST
+bool flag = 1;
+void setup() {
+  Serial.begin(9600);
+  radioInit();
+}
+
+void loop() {
+  sendPackage(flag);
+  flag = !flag;
+  delay(1000);
+}
+#endif
+
 #endif
 
 #include "states.h"
@@ -41,21 +57,19 @@ Author: @Yeralyy
 #define ONE_HOUR  36000000UL // 1hour = 60 minute = 3600 sec = 36 000 000 milliseconds
 
 #define PID_DT 100 // 100 milliseconds
-#define SW 8
+
+#define SW 7
 
 RtcDS3231<TwoWire> rtc(Wire);
 
-encMinim enc(6, 7, 8, 0);
+encMinim enc(3, 4, 7, 0);
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 GyverBME280 bme;
 ArrowControl arrow;
 
-#if nRF
-RF24 radio(9, 10);
-#endif
 
 #if SIM800L
-SoftwareSerial sim800l(11, 12); // 13 - TX, 12 - RX
+SoftwareSerial sim800l(6, 5); // 5 - TX, 6 - RX
 char buffer[BUF_SIZE];
 #endif
 
@@ -78,7 +92,6 @@ uint32_t pid_tmr {0};
 char buf[BUF_SIZE];
 volatile bool ringingFlag {0};
 #endif
-volatile bool ringingFlag {0};
 
 
 #if SIM800L
@@ -113,6 +126,12 @@ void setup() {
   
   // attaching 3th pin for interrupt RING
   attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), ringing, RISING);
+  #endif
+
+  #if nRF
+
+  radioInit();
+
   #endif
 
   lcd.init(); // display
@@ -178,11 +197,6 @@ void setup() {
 
 void loop() {
 
-  /*
-  #if LOG
-  Serial.println(state);
- */
-
   #if SIM800L
   // ATE0V0+CMEE=1;&W no logging
   // ATE1V1+CMEE=2;&W for logging
@@ -220,6 +234,7 @@ void loop() {
     sim800l.write(Serial.read());
   }
   #endif
+
   RtcDateTime now = rtc.GetDateTime();
   scheduelerTick(now);
   enc.tick(); // encoder handler
@@ -228,7 +243,6 @@ void loop() {
     pid_tmr = millis();
     PIDtick();
   }
-
 
   switch (state)
   {

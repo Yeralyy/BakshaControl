@@ -7,9 +7,9 @@ File for defining config values
 #define BME280 1 // 1 - BME 280 in use, 0 - no BME280
 #define SIM800L 0
 #define ESP32 0
-#define nRF 0
+#define nRF 1
 
-#define SET_TIME 1 // Set 1 and flash to set time, 0 - nothing
+#define SET_TIME 0 // Set 1 and flash to set time, 0 - nothing
 
 #define TEST 0
 #define INIT_EEPROM 0
