@@ -740,7 +740,7 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 #endif
 
                 if (_count < 1) _count = 1;
-                if (_count > CHANNELS_COUNT) _count = CHANNELS_COUNT;
+                if (_count > channels_count) _count = channels_count;
 
                 replaceSymbol(lcd, 0, 0, '>');
                 printText(lcd, 1, 0, CHANNEL_STR);
@@ -1030,7 +1030,6 @@ void ArrowControl::updateDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // update
                         break;
 
                     case 3:
-                        clearRow(lcd, 2);
                         if (currentChannel.relayMode == TO_ON) {
                             printText(lcd, 0, 2, "Direction:>Off-On");
                         }

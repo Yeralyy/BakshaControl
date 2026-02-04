@@ -167,28 +167,14 @@ void setup() {
   if (now < compiled) rtc.SetDateTime(compiled);
   // ---------------- RTC INIT ------------------- 
 
-  for (int i = 0; i < CHANNELS_COUNT; ++i) {
-    pinMode(channelsPins[i], OUTPUT); 
-  }
-
-  for (int i = 0; i < SENSORS_COUNT; ++i) {
-    pinMode(sensorsPins[i], INPUT);
-  }
-
   state = MAIN_MENU;
   drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity(), bme.readPressure());
   updateTime(lcd, now);
 
-  if (!digitalRead(SW)) {
-    factoryReset();
-  }
 
-  if (isFirstRun()) {
-    initEEPROM(); // First run
-    #if LOG
-    Serial.println(F("fr:eeprm init"));
-    #endif
-  }
+  //resetEEPROM();
+
+  initEEPROM(); // First run
 
   #if INIT_EEPROM
   initEEPROM();
@@ -236,7 +222,7 @@ void loop() {
   #endif
 
   RtcDateTime now = rtc.GetDateTime();
-  scheduelerTick(now);
+  //scheduelerTick(now);
   enc.tick(); // encoder handler
 
   if (millis() - pid_tmr >= PID_DT) {

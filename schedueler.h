@@ -11,7 +11,7 @@ void scheduelerTick(RtcDateTime& now);
 
 
 void scheduelerTick(RtcDateTime& now) {
-    for (int i = 1; i < CHANNELS_COUNT + 1; ++i) {
+    for (int i = 1; i < 7 + 1; ++i) {
         Channel currentChannel {getChannel(i)};
         /*
         #if LOG
@@ -28,6 +28,7 @@ void scheduelerTick(RtcDateTime& now) {
             case TIMER:
                 if (digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode) && millis() - timers[i - 1] >= (currentChannel.data.timerMode.periodHour * 3600000) + (currentChannel.data.timerMode.periodMinute * 60000) + (currentChannel.data.timerMode.periodSecond * 1000)) {
                     #if nRF
+                    packet.type = CONTROL_PACKAGE;
                     sendPackage(currentChannel.relayMode);
                     digitalWrite(channelsPins[i - 1], currentChannel.relayMode);
                    #else

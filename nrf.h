@@ -10,15 +10,23 @@
 
 RF24 radio(CE_PIN, CSN_PIN);
 
-uint8_t address[][6] = {"1Node", "2Node"};
+uint8_t address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node"}; // pipe 1 will be for pairing
 
 bool radioNumber = 0;
 
 bool role = true;
 
+typedef enum {
+    SLAVE_REQUEST = 0, // salve - master
+    PAIRING_REQUEST,  // master - slave
+    CONTROL_PACKAGE, // master - slave
+    STATUS_REQUEST, // master - slave, slave - master
+} PACKAGE_TYPE; 
+
 struct Package {
-    char type = 'c';
-    bool state {1};
+    uint32_t deviceID;
+    bool state;
+    PACKAGE_TYPE type;
 };
 
 Package packet;
