@@ -3,6 +3,8 @@
 // current user state
 enum FSM : uint8_t {
  IDLE = 0, // idle state
+ FIRST_RUN,
+ PAIRING,
  MAIN_MENU,
  SERVICE,
  CHANNELS,

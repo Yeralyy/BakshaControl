@@ -9,21 +9,36 @@ Author: @Yeralyy
 
 #include "nrf.h"
 
+#endif
+
 #if TEST
+int num = 0;
 bool flag = 1;
+
+#define CE_PIN 9
+#define CSN_PIN 10
+
+Radio radio(CE_PIN, CSN_PIN);
+
+
 void setup() {
   Serial.begin(9600);
-  radioInit();
+  radio.radioInit(0, 1);
 }
 
 void loop() {
-  sendPackage(flag);
-  flag = !flag;
-  delay(1000);
+  uint16_t n = radio.scanRadio();
+  //bool n = radio.readPipe();
+  if (n) {
+    Serial.println(n);
+    for (int i = 0; i < n; ++i) {
+      Serial.print("device id: ");
+      Serial.println(radio[i].deviceId);
+    }
+  }
 }
-#endif
-
-#endif
+//#endif
+#else
 
 #include "states.h"
 #include "lib/encMinim.h"
@@ -165,16 +180,18 @@ void setup() {
   #endif
 
   if (now < compiled) rtc.SetDateTime(compiled);
-  // ---------------- RTC INIT ------------------- 
 
-  state = MAIN_MENU;
-  drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity(), bme.readPressure());
-  updateTime(lcd, now);
+  // ---------------- EEPROM INIT -------------------------
 
+  initEEPROM(state); // First run
 
-  //resetEEPROM();
+  state = FIRST_RUN;
+  
+  if (state == MAIN_MENU) {
+    drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity(), bme.readPressure());
+    updateTime(lcd, now);
+  }
 
-  initEEPROM(); // First run
 
   #if INIT_EEPROM
   initEEPROM();
@@ -261,5 +278,17 @@ void loop() {
     case MODES:
       arrow.modesTick(enc, lcd, state);
       break;
+
+    case FIRST_RUN:
+      arrow.welcomeTick(enc, lcd, state);
+      break;
+    
+    case PAIRING:
+      arrow.pairingTick(enc, lcd, state);
+
+      break;
+    
   }
 } 
+
+#endif
