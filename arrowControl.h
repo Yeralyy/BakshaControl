@@ -4,7 +4,7 @@
 #include "eeprom_control.h"
 #include <RtcDateTime.h>
 #include "utils.h"
-
+#include "nrf.h"
 
 #include "states.h"
 
@@ -40,13 +40,14 @@ const char* DAYS_TO_TEXT[7] = {
 const char THRESHOLD_STR[] = "Threshold:";
 
 
-// MUSTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARD
 
 class ArrowControl {
     public:
         void menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
         void channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
         void modesTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
+        void welcomeTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state);
+        void pairingTick(encMinim& enc, LiquidCrystal_I2C& lcd, Radio& radio, FSM& state);
     private:
         Channel currentChannel;
 
@@ -59,6 +60,10 @@ class ArrowControl {
         int8_t _dayIndex {0};
         int8_t _dayIndexFlag {0};
 
+        uint16_t n {0};
+
+        uint32_t _afkTmr {0};
+
         // for modes preferenes
         bool _changedFlag {0}; bool _first {1};
         bool _inChannelFlag {0};
@@ -66,6 +71,7 @@ class ArrowControl {
         bool _channelFlag {1};
 	    bool _settingsChanged {0};
         bool _modesFlag = {1};
+        bool _pairingFlag = {0};
 
         bool _scrollFlag = {0};
 
@@ -84,6 +90,19 @@ class ArrowControl {
 
 // ====================================== CODE ======================================
 
+
+void ArrowControl::welcomeTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state) {
+    redrawDisplay(lcd, state);
+
+    if (enc.isTurn() || enc.isClick()) {
+        lcd.clear();
+        _first = 1;
+        state = PAIRING;
+    }
+
+}
+
+
 void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  {
     redrawDisplay(lcd, state);
     if (enc.isTurn() || enc.isClick()) {
@@ -92,6 +111,133 @@ void ArrowControl::menuTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& state)  
         lcd.clear(); // clean display
         _first = 1;
     }
+}
+
+void ArrowControl::pairingTick(encMinim& enc, LiquidCrystal_I2C& lcd, Radio& radio, FSM& state) {
+    if (_first) {
+        lcd.setCursor(0, 0);
+        lcd.print("Searching...");
+        _first = 0;
+    }
+
+    if (_pairingFlag) {
+
+
+        if (_index == 0) {
+            if (enc.isRight()) {
+                ++_index;
+                replaceSymbol(lcd, 5, 3, ' ');
+                replaceSymbol(lcd, 10, 3, '>');
+            }
+
+            if (enc.isClick()) {
+                lcd.clear();
+                lcd.setCursor(0, 0);
+                lcd.print("Saving Channel ");
+                lcd.print(channels_count + 1);
+
+                bool is_paired = radio.pairSlave(1000);
+
+                putChannel(radio[n]);
+                delay(300);
+                lcd.clear();
+                state = MAIN_MENU;
+                _pairingFlag = 0; 
+            }
+
+        }
+
+        if (_index == 1) {
+            if (enc.isLeft()) {
+                --_index;
+                replaceSymbol(lcd, 10, 3, ' ');
+                replaceSymbol(lcd, 5, 3, '>');
+            }
+
+            if (enc.isClick()) {
+                _index = 0;
+                _pairingFlag = 0;
+                lcd.clear();
+                _first = 1;
+                _afkTmr = 0;
+                return;
+            }
+        }
+        
+
+    } else {
+        if (enc.isClick()) {
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Pairing process...");
+            lcd.setCursor(0, 1);
+            lcd.print("Device id: ");
+            lcd.print(radio[_index].deviceId);
+            lcd.setCursor(0, 2);
+            lcd.print("Device type: ");
+            if (radio[_index].deviceType == SLAVE) {
+                lcd.print("Slave");
+            } else lcd.print("Master");
+        
+
+            lcd.setCursor(5, 3);
+            lcd.print(">Yes");
+            lcd.print("  No");
+
+            n = _index;
+            _index = 0;
+            _pairingFlag = 1;
+        }
+
+        if (enc.isRight()) {
+            int8_t prev_idx = _index;
+            _index++;
+            if (_index > n - 1) {
+                _index = 0;
+            }
+
+            replaceSymbol(lcd, 6 * ((prev_idx) / 3), (prev_idx > 2) ? (prev_idx + 1) - 3 : prev_idx + 1, ' ');
+
+            goto render;
+            _afkTmr = millis();
+
+        }
+
+        if (enc.isLeft()) {
+            int8_t prev_idx = _index;
+            _index--;
+            if (_index < 0) {
+                _index = n - 1;
+            }
+
+            replaceSymbol(lcd, 6 * ((prev_idx) / 3), (prev_idx > 2) ? (prev_idx + 1) - 3 : prev_idx + 1, ' ');
+
+            goto render;
+            _afkTmr = millis();
+        }
+
+        if (millis() - _afkTmr >= 5000) {
+            n = radio.scanRadio();
+            for (int i = 1; i < 4; ++i) clearRow(lcd, i);
+
+            if (n) {
+                _index = 0;
+                render:
+                    for (int i = 0; i < n; ++i) {
+                        if (i == _index) {
+                            replaceSymbol(lcd, 6 * ((i) / 3), (i > 2) ? (i + 1) - 3 : i + 1, '>');
+                        }
+                        lcd.setCursor(1 + 6 * ((i) / 3), (i > 2) ? (i + 1) - 3 : i + 1);
+                        lcd.print("id:");
+                        lcd.print(radio[i].deviceId);
+                    }
+            }
+
+            _afkTmr = millis();
+        }
+    }
+
+
 }
 
 void ArrowControl::constrainHelper() {
@@ -935,6 +1081,18 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 }
             printText(lcd, 15, 0, ">Back");
             break;
+
+        case FIRST_RUN:
+                lcd.setCursor(5, 0);
+                lcd.print("WELCOME ;)");
+                lcd.setCursor(0, 1);
+                lcd.print("Use encoder to click");
+                lcd.setCursor(0, 2);
+                lcd.print("--------------------");
+                lcd.setCursor(0, 3);
+                lcd.print("Set up the system->");
+                break;
+
         }
         _first = 0;
     }

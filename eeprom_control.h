@@ -4,8 +4,12 @@
 #include "states.h"
 #include "CONFIG.h"
 
+#if nRF
+#include "nrf.h"
+#endif
+
 #define EEPROM_KEY_ADDRESS 1023
-#define EEPROM_KEY 22
+#define EEPROM_KEY 69 
 
 #define CHANNEL_POINTER_ADRESS 974
 #define CHANNELS_ADDRESS 0
@@ -123,13 +127,21 @@ struct Channel {
     
 }; // 54  bytes
 
-void initEEPROM(void);
-void factoryReset(void);
-//void updateChannels(Channels& channels);
+void initEEPROM(FSM& state);
 Channel getChannel(int8_t n);
 void putChannel(int8_t n, Channel& channel);
+void putChannel(int8_t n, Node& node);
 bool isFirstRun(void);
 void resetEEPROM(void);
+
+#if nRF
+int8_t channelsCount() {
+    CHANNEL_POINTER = EEPROM.read(CHANNEL_POINTER_ADRESS);
+    channels_count = int8_t(CHANNEL_POINTER / sizeof(Channel));
+    return channels_count;
+}
+#endif
+
 
 bool isFirstRun(void) {
     #if LOG
@@ -139,15 +151,15 @@ bool isFirstRun(void) {
     return ((EEPROM.read(EEPROM_KEY_ADDRESS) == EEPROM_KEY) ? 0 : 1); // first run?
 }
 
-void initEEPROM(void) {
-
+void initEEPROM(FSM& state) {
     if (isFirstRun()) {
         EEPROM.update(EEPROM_KEY_ADDRESS, EEPROM_KEY);
         EEPROM.update(CHANNEL_POINTER_ADRESS, CHANNEL_POINTER);
-    }
+        state = FIRST_RUN;
+    } else 
+        state = MAIN_MENU;
 
-    CHANNEL_POINTER = EEPROM.read(CHANNEL_POINTER_ADRESS);
-    channels_count = int8_t(CHANNEL_POINTER / sizeof(Channel));
+    channelsCount();
 
     #if LOG
     Serial.println(F("EEPROM initilized"));
@@ -161,18 +173,6 @@ void initEEPROM(void) {
 
 }
 
-void factoryReset(void) {
-    /*
-    for (int8_t i = 1; i < CHANNELS_COUNT + 1; i++) {
-        Channel channel {};
-        putChannel(i, channel);
-    }
-        */
-
-    #if LOG
-    Serial.println(F("EEPROM Factory reset"));
-    #endif
-}
 
 Channel getChannel(int8_t n) { // return get N'th struct in Channels
     if (n > 0 && n <= channels_count) {
@@ -185,6 +185,16 @@ Channel getChannel(int8_t n) { // return get N'th struct in Channels
 void putChannel(int8_t n, Channel& channel) { // put N'th struct in Channels
     if (n > 0 && n <= channels_count) EEPROM.put(CHANNELS_ADDRESS + (n - 1) * sizeof(Channel), channel);
 }
+
+void putChannel(Node& node) {
+    Channel new_channel {};
+    //EEPROM.put(CHANNELS_ADDRESS + (channels_count - 1) * sizeof(Channel), new_channel);
+    EEPROM.put(CHANNEL_POINTER, new_channel);
+    channels_count++;
+    CHANNEL_POINTER += sizeof(Channel);
+    EEPROM.update(CHANNEL_POINTER_ADRESS, CHANNEL_POINTER);
+}
+
 
 void resetEEPROM(void) {
     #if LOG

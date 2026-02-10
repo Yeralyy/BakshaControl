@@ -7,6 +7,7 @@
 #include "nrf.h"
 #endif
 
+
 void scheduelerTick(RtcDateTime& now);
 
 
@@ -27,6 +28,7 @@ void scheduelerTick(RtcDateTime& now) {
                 continue;
             case TIMER:
                 if (digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode) && millis() - timers[i - 1] >= (currentChannel.data.timerMode.periodHour * 3600000) + (currentChannel.data.timerMode.periodMinute * 60000) + (currentChannel.data.timerMode.periodSecond * 1000)) {
+                    /*
                     #if nRF
                     packet.type = CONTROL_PACKAGE;
                     sendPackage(currentChannel.relayMode);
@@ -35,9 +37,11 @@ void scheduelerTick(RtcDateTime& now) {
                     digitalWrite(channelsPins[i - 1], currentChannel.relayMode);
                     #endif
                     timers[i - 1] = millis();
+                    */
                 }
 
                 if (digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode) && millis() - timers[i - 1] >= (currentChannel.data.timerMode.workMinute * 60000) + (currentChannel.data.timerMode.workSecond * 1000)) {
+                    /*
                     #if nRF
                     sendPackage(!currentChannel.relayMode);
                     digitalWrite(channelsPins[i - 1], !currentChannel.relayMode);
@@ -45,6 +49,7 @@ void scheduelerTick(RtcDateTime& now) {
                     digitalWrite(channelsPins[i - 1], !currentChannel.relayMode);
                     #endif
                     timers[i - 1] = millis();
+                    */
                 }
                  
                 break;

@@ -5,8 +5,6 @@
 #include <SPI.h>
 #include <RF24.h>
 
-#define CE_PIN 9
-#define CSN_PIN 10
 
 typedef enum : uint8_t {
     SLAVE_REQUEST = 0, // salve - master
@@ -41,6 +39,7 @@ class Radio : public RF24 {
         bool readPipe();
 
         uint16_t scanRadio(uint16_t timeout = 1000);
+        bool pairSlave(uint16_t timeout = 1000);
         void scanDelete();
 
         Node& operator [](int idx) {
@@ -51,6 +50,8 @@ class Radio : public RF24 {
 
         //void _rxMxode(uint8_t readingPipe);
         //void _txMode(uint8_t readingPipe);
+
+        bool isScanned(uint32_t deviceId, uint16_t count);
 
         const uint8_t address[5][6] = {"1Node", "2Node", "3Node", "4Node", "5Node"}; // pipe 1 will be for pairing
         const uint8_t pair_pipe = 0;
@@ -95,8 +96,34 @@ void radio::_txMode(uint8_t readingPipe) {
 }
 */
 
+bool Radio::pairSlave(uint16_t timeout) {
+    this->openWritingPipe(address[master_tx]);
+    this->stopListening();
+    send_packet.type = PAIRING_REQUEST;
+    radio_tmr = millis();
+    bool report = false;
+    while (millis() - radio_tmr < timeout) {
+        report = sendPackage();
+        if (report) return true;
+    }
+
+    return false;
+}
+
+bool Radio::isScanned(uint32_t deviceId, uint16_t count) {
+    for (int i = 0; i < count; ++i) {
+        if (scanResult[i].deviceId == deviceId) return true;
+    }
+
+    return false;
+
+}
+
 void Radio::radioInit(uint32_t deviceId, bool first_init = 0) {
     if (!this->begin()) {
+        #if LOG
+        Serial.println("Hardware is not responding");
+        #endif
         while (1) {}
     }
 
@@ -107,7 +134,7 @@ void Radio::radioInit(uint32_t deviceId, bool first_init = 0) {
 
     if (first_init) { // in first run slave will send his id and master will be listening one
         if (master) {
-            this->openWritingPipe(master_tx);
+            this->openWritingPipe(address[master_tx]);
             this->openReadingPipe(1, address[pair_pipe]);
             this->startListening();
         } else {
@@ -130,6 +157,7 @@ void Radio::radioInit(uint32_t deviceId, bool first_init = 0) {
 
 uint16_t Radio::scanRadio(uint16_t timeout) {
     if (master) {
+        this->startListening();
         radio_tmr = millis();
         uint16_t count = 0;
         uint16_t buff_size = 2;
@@ -137,19 +165,22 @@ uint16_t Radio::scanRadio(uint16_t timeout) {
         scanResult = new Node[buff_size];
         while (millis() - radio_tmr < timeout) {
             if (readPipe() && recieve_packet.type == SLAVE_REQUEST) {
-                count++;
-                Node slave {recieve_packet.deviceID, SLAVE};
-                if (count > buff_size) {
-                    buff_size = buff_size * 2;
-                    Node* newScanResult = new Node[buff_size]; // double the size of array
-                    memcpy(newScanResult, scanResult, size_t(count * sizeof(Node))); // copy elements to new array
-                    scanDelete();
-                    scanResult = newScanResult; // assign new to the main pointer
-                }
+                if (!this->isScanned(recieve_packet.deviceID, count)) {
+                    count++;
+                    Node slave {recieve_packet.deviceID, SLAVE};
+                    if (count > buff_size) {
+                        buff_size = buff_size * 2;
+                        Node* newScanResult = new Node[buff_size]; // double the size of array
+                        memcpy(newScanResult, scanResult, size_t(count * sizeof(Node))); // copy elements to new array
+                        scanDelete();
+                        scanResult = newScanResult; // assign new to the main pointer
+                    }
 
-                scanResult[count - 1] = slave;
+                    scanResult[count - 1] = slave;
+                }
             }
         }
+        
 
         return count;
 
@@ -175,14 +206,13 @@ bool Radio::sendPackage() {
     Serial.print(end_timer - start_timer);  // print the timer result
     Serial.println(F(" us. Sent: "));
     #endif
-    return true;
-
    } else {
     #if LOG 
     Serial.println(F("Transmission failed or timed out"));  // payload was not delivered
     #endif
-    return false;
    }
+
+   return report;
 }
 
 bool Radio::readPipe() {

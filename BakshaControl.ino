@@ -28,7 +28,7 @@ void setup() {
 
 void loop() {
   uint16_t n = radio.scanRadio();
-  //bool n = radio.readPipe();
+  //radio.readPipe();
   if (n) {
     Serial.println(n);
     for (int i = 0; i < n; ++i) {
@@ -82,6 +82,12 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 GyverBME280 bme;
 ArrowControl arrow;
 
+/*
+int iter = 0;
+uint8_t dot = 9;
+uint32_t pairTmr = 0;
+uint32_t searchTmr = 0;
+*/
 
 #if SIM800L
 SoftwareSerial sim800l(6, 5); // 5 - TX, 6 - RX
@@ -92,6 +98,16 @@ char buffer[BUF_SIZE];
 SoftwareSerial esp32(13, 12); // 13 - TX, 12 - RX
 #endif
 
+#if nRF
+
+#define CE_PIN 9
+#define CSN_PIN 10
+
+Radio radio(CE_PIN, CSN_PIN);
+
+uint16_t n; // scanned networks
+
+#endif
 
 // finite state machine
 FSM state {IDLE};
@@ -145,7 +161,8 @@ void setup() {
 
   #if nRF
 
-  radioInit();
+  //Serial.begin(9600);
+  radio.radioInit(0, 1);
 
   #endif
 
@@ -284,8 +301,7 @@ void loop() {
       break;
     
     case PAIRING:
-      arrow.pairingTick(enc, lcd, state);
-
+      arrow.pairingTick(enc, lcd, radio, state);
       break;
     
   }
