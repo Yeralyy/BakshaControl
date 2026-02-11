@@ -196,13 +196,12 @@ void setup() {
   Serial.println(now.Minute());
   #endif
 
-  if (now < compiled) rtc.SetDateTime(compiled);
-
   // ---------------- EEPROM INIT -------------------------
 
   initEEPROM(state); // First run
 
-  state = FIRST_RUN;
+  //state = FIRST_RUN;
+  state = MAIN_MENU;
   
   if (state == MAIN_MENU) {
     drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity(), bme.readPressure());

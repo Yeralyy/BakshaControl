@@ -70,8 +70,9 @@ class ArrowControl {
         bool _newReadFlag {1}; // Flag for EEPROM read
         bool _channelFlag {1};
 	    bool _settingsChanged {0};
-        bool _modesFlag = {1};
-        bool _pairingFlag = {0};
+        bool _modesFlag  {1};
+        bool _pairingFlag  {0};
+        bool _newChannelFlag  {0};
 
         bool _scrollFlag = {0};
 
@@ -551,6 +552,36 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
 
 
         // ==================================== ARROW TRACKING ==============================
+        if (_newChannelFlag) {
+             if (_newChannelFlag && enc.isRight() && _index == 0) {
+                _index = 1;
+                replaceSymbol(lcd, 5, 2, ' ');
+                replaceSymbol(lcd, 11, 2, '>');
+            }
+
+            if (_newChannelFlag && enc.isLeft() && _index == 1) {
+                _index = 0;
+                replaceSymbol(lcd, 5, 2, '>');
+                replaceSymbol(lcd, 11, 2, ' ');
+            }
+
+            if (enc.isClick()) {
+                lcd.clear();
+                if (_index == 0) {
+                    _index = 0;
+                    _first = 1;
+                    _newChannelFlag = 0;
+                    _count = 0;
+                    state = PAIRING;
+                } else {
+                    _first = 1;
+                    _index = 0;
+                    _newChannelFlag = 0;
+                }
+            }
+
+        }  else {
+
         if (_index == 0 && enc.isClick()) {
             if (_scrollFlag) {
                 _scrollFlag = 0;
@@ -773,6 +804,7 @@ void ArrowControl::channelsTick(encMinim& enc, LiquidCrystal_I2C& lcd, FSM& stat
         }
 
 
+    }
 
 
         updateDisplay(lcd, state);
@@ -886,7 +918,19 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
                 #endif
 
                 if (_count < 1) _count = 1;
-                if (_count > channels_count) _count = channels_count;
+                if (_count > channels_count) {
+                    _count = channels_count;
+                    _first = 0;
+                    _newChannelFlag = 1;
+                    lcd.clear();
+                    lcd.setCursor(0, 0);
+                    lcd.print(" Add a new Channel?");
+
+                    lcd.setCursor(5, 2);
+                    lcd.print(">YES   NO");
+
+                    return;
+                }
 
                 replaceSymbol(lcd, 0, 0, '>');
                 printText(lcd, 1, 0, CHANNEL_STR);
@@ -927,6 +971,12 @@ void ArrowControl::redrawDisplay(LiquidCrystal_I2C& lcd, FSM& state) { // redraw
 
                 lcd.setCursor(16, 3);
                 lcd.print("Back");
+                break;
+
+            case NEW_CHANNEL:
+                lcd.setCursor(0, 0);
+                lcd.print("...Add new Channel");
+
                 break;
 
             case MODES:
