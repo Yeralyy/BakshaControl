@@ -12,6 +12,7 @@ Author: @Yeralyy
 #endif
 
 #if TEST
+/*
 int num = 0;
 bool flag = 1;
 
@@ -29,8 +30,8 @@ void setup() {
 void loop() {
   uint16_t n = radio.scanRadio();
   //radio.readPipe();
+  Serial.println(n);
   if (n) {
-    Serial.println(n);
     for (int i = 0; i < n; ++i) {
       Serial.print("device id: ");
       Serial.println(radio[i].deviceId);
@@ -38,6 +39,30 @@ void loop() {
   }
 }
 //#endif
+*/
+
+#include <SoftwareSerial.h>
+
+const byte rxPin = 2;
+const byte txPin = 3;
+
+SoftwareSerial sim800l(rxPin, txPin);
+
+void setup() {
+  Serial.begin(9600);
+  sim800l.begin(9600);
+}
+
+void loop() {
+  if (Serial.available()) {
+    sim800l.write(Serial.read());
+  }
+
+  if (sim800l.available()) {
+    Serial.write(sim800l.read());
+  }
+}
+
 #else
 
 #include "states.h"
@@ -50,9 +75,6 @@ void loop() {
 
 #if SIM800L
 #include <SoftwareSerial.h>
-#include "string.h"
-#define BUF_SIZE 64
-#define INTERRUPT_PIN 3
 #endif
 
 #if ESP32
@@ -89,11 +111,6 @@ uint32_t pairTmr = 0;
 uint32_t searchTmr = 0;
 */
 
-#if SIM800L
-SoftwareSerial sim800l(6, 5); // 5 - TX, 6 - RX
-char buffer[BUF_SIZE];
-#endif
-
 #if ESP32
 SoftwareSerial esp32(13, 12); // 13 - TX, 12 - RX
 #endif
@@ -116,20 +133,7 @@ FSM lastState {IDLE};
 uint32_t menu_tmr {0}; 
 uint32_t time_tmr {0};
 uint32_t pid_tmr {0};
-
-
-
-#if SIM800L
-char buf[BUF_SIZE];
-volatile bool ringingFlag {0};
-#endif
-
-
-#if SIM800L
-void ringing() {
-  ringingFlag = 1;
-}
-#endif
+bool gstate = 0;
 
 
 
@@ -147,22 +151,10 @@ void setup() {
   resetEEPROM();
   #endif
 
-  #if SIM800L
-  Serial.begin(9600);
-  sim800l.begin(9600);
-  //sim800l.println(F("ATE0V0+CMEE=1;&W"));
-
-
-  pinMode(INTERRUPT_PIN, INPUT_PULLUP);
-  
-  // attaching 3th pin for interrupt RING
-  attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), ringing, RISING);
-  #endif
-
   #if nRF
 
   //Serial.begin(9600);
-  radio.radioInit(0, 1);
+  radio.radioInit(0, 0);
 
   #endif
 
@@ -177,6 +169,7 @@ void setup() {
   /* real time clock check & init*/
 
   // --------------- RTC INIT -------------------
+  #if SET_TIME
   RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
 
   if (!rtc.IsDateTimeValid()) {
@@ -185,7 +178,6 @@ void setup() {
 
   if (!rtc.GetIsRunning()) rtc.SetIsRunning(true);
 
-  #if SET_TIME
   rtc.SetDateTime(compiled);
   #endif
 
@@ -201,7 +193,6 @@ void setup() {
   initEEPROM(state); // First run
 
   //state = FIRST_RUN;
-  state = MAIN_MENU;
   
   if (state == MAIN_MENU) {
     drawMainMenu(lcd, bme.readTemperature(), bme.readHumidity(), bme.readPressure());
@@ -209,59 +200,28 @@ void setup() {
   }
 
 
-  #if INIT_EEPROM
-  initEEPROM();
-  #endif
 }
 
 void loop() {
-
-  #if SIM800L
-  // ATE0V0+CMEE=1;&W no logging
-  // ATE1V1+CMEE=2;&W for logging
-  // AT+CMGS="+7928xxxxxxx" sending sms
-  // ATD+7777xxxxxxxx; call
-  
-
-  //AT+CMGDA="DEL ALL" delete all sms
-  //AT+CMGL="REC UNREAD",1 list of sms
-  //AT+CMGR=7,1 read 7th sms in memmory of SIM
-  //AT+CMGS="+7928xxxxxxx" send sms
-
-  
-  /*
-  if (ringingFlag)  { // Action. SMS/CALL
-    if (sim800l.available()) {
-      //Serial.write(sim800l.read());
-      //buf.strcat
-    }
-  }
-    */
-    
-
-  if (sim800l.available() > 0) {
-    /*
-    uint8_t symbol = sim800l.read();
-    Serial.print(symbol);
-    if (symbol == 10) Serial.println();
-    else Serial.print(' ');
-    */
-    Serial.write(sim800l.read());
-  }
-
-  if (Serial.available()) {
-    sim800l.write(Serial.read());
-  }
-  #endif
-
-  RtcDateTime now = rtc.GetDateTime();
-  //scheduelerTick(now);
   enc.tick(); // encoder handler
+  RtcDateTime now = rtc.GetDateTime();
+  scheduelerTick(now, radio);
 
+  /*
   if (millis() - pid_tmr >= PID_DT) {
     pid_tmr = millis();
     PIDtick();
   }
+    */
+
+    /*
+    if (millis() - timers[0] >= 3000) {
+      radio.setPackageType(CONTROL_PACKAGE);
+      radio.sendPackage(channels_state[i - 1]);
+      channels_state[i - 1] = !channels_state[i - 1];
+      timers[0] = millis();
+    }
+      */
 
   switch (state)
   {

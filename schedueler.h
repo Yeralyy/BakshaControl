@@ -7,70 +7,72 @@
 #include "nrf.h"
 #endif
 
+bool channels_state[5] {0};
 
-void scheduelerTick(RtcDateTime& now);
+void scheduelerTick(RtcDateTime& now, Radio& radio);
 
+int8_t i = 1;
 
-void scheduelerTick(RtcDateTime& now) {
-    for (int i = 1; i < 7 + 1; ++i) {
-        Channel currentChannel {getChannel(i)};
-        /*
+void scheduelerTick(RtcDateTime& now, Radio& radio) {
+    int8_t channels_n = channelsCount();
+
+    if (i < channels_n + 1) {
+        Channel slaveChannel {getChannel(i)};
+
         #if LOG
+        Serial.print("Channel ");
         Serial.print(i);
-        Serial.print(F(" Channel mode: "));
-        Serial.print(currentChannel.mode);
-        Serial.println();
+        Serial.print(" mode: ");
         #endif
-        */
+        
 
-        switch (currentChannel.mode) {
+        switch (slaveChannel.mode) {
             case OFF:
-                continue;
+                Serial.println("OFF");
+                break;
             case TIMER:
-                if (digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode) && millis() - timers[i - 1] >= (currentChannel.data.timerMode.periodHour * 3600000) + (currentChannel.data.timerMode.periodMinute * 60000) + (currentChannel.data.timerMode.periodSecond * 1000)) {
-                    /*
-                    #if nRF
-                    packet.type = CONTROL_PACKAGE;
-                    sendPackage(currentChannel.relayMode);
-                    digitalWrite(channelsPins[i - 1], currentChannel.relayMode);
-                   #else
-                    digitalWrite(channelsPins[i - 1], currentChannel.relayMode);
-                    #endif
+                #if LOG
+                Serial.println("TIMER");
+                #endif
+                if (channels_state[i - 1] == !uint8_t(slaveChannel.relayMode) && millis() - timers[i - 1] >= (slaveChannel.data.timerMode.periodHour * 3600000) + (slaveChannel.data.timerMode.periodMinute * 60000) + (slaveChannel.data.timerMode.periodSecond * 1000)) {
+                    channels_state[i - 1] = uint8_t(slaveChannel.relayMode);
+                    radio.setPackageType(CONTROL_PACKAGE);
+                    radio.sendPackage(slaveChannel.relayMode);
                     timers[i - 1] = millis();
-                    */
                 }
 
-                if (digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode) && millis() - timers[i - 1] >= (currentChannel.data.timerMode.workMinute * 60000) + (currentChannel.data.timerMode.workSecond * 1000)) {
-                    /*
-                    #if nRF
-                    sendPackage(!currentChannel.relayMode);
-                    digitalWrite(channelsPins[i - 1], !currentChannel.relayMode);
-                    #else
-                    digitalWrite(channelsPins[i - 1], !currentChannel.relayMode);
-                    #endif
+                if (channels_state[i - 1] == uint8_t(slaveChannel.relayMode) && millis() - timers[i - 1] >= (slaveChannel.data.timerMode.workMinute * 60000) + (slaveChannel.data.timerMode.workSecond * 1000)) {
+                    channels_state[i - 1] = !uint8_t(slaveChannel.relayMode);
+                    radio.setPackageType(CONTROL_PACKAGE);
+                    radio.sendPackage(!slaveChannel.relayMode);
                     timers[i - 1] = millis();
-                    */
                 }
                  
                 break;
 
             case DAY:
-                if (digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode)) {
-                    if (now.Hour() == currentChannel.data.dayMode.startHour) {
-                        if (now.Minute() == currentChannel.data.dayMode.startMinute) {
-                            if (now.Second() >= currentChannel.data.dayMode.startSecond) {
-                                digitalWrite(channelsPins[i - 1], currentChannel.relayMode);
+                if (channels_state[i - 1] == !uint8_t(slaveChannel.relayMode)) {
+                    if (now.Hour() == slaveChannel.data.dayMode.startHour) {
+                        if (now.Minute() == slaveChannel.data.dayMode.startMinute) {
+                            if (now.Second() >= slaveChannel.data.dayMode.startSecond) {
+                                //digitalWrite(channelsPins[i - 1], currentChannel.relayMode);
+                                channels_state[i - 1] = uint8_t(slaveChannel.relayMode);
+                                radio.setPackageType(CONTROL_PACKAGE);
+                                radio.sendPackage(slaveChannel.relayMode);
                             }
                         }
                     }
                     
                 }
 
-                if (digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode)) {
-                    if (now.Hour() == currentChannel.data.dayMode.endHour) {
-                        if (now.Minute() == currentChannel.data.dayMode.endMinute) {
-                            if (now.Second() >= currentChannel.data.dayMode.endSecond) {
-                                digitalWrite(channelsPins[i - 1], !uint8_t(currentChannel.relayMode));
+                if (channels_state[i - 1] == uint8_t(slaveChannel.relayMode)) {
+                    if (now.Hour() == slaveChannel.data.dayMode.endHour) {
+                        if (now.Minute() == slaveChannel.data.dayMode.endMinute) {
+                            if (now.Second() >= slaveChannel.data.dayMode.endSecond) {
+                                //digitalWrite(channelsPins[i - 1], !uint8_t(currentChannel.relayMode));
+                                channels_state[i - 1] = !uint8_t(slaveChannel.relayMode);
+                                radio.setPackageType(CONTROL_PACKAGE);
+                                radio.sendPackage(!slaveChannel.relayMode);
                             }
                         }
                     }
@@ -79,13 +81,19 @@ void scheduelerTick(RtcDateTime& now) {
                 break;
 
             case SENSOR:
-                if (analogRead(channelsPins[i - 1]) >= currentChannel.data.sensorMode.threshold && digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode)) {
-                    digitalWrite(channelsPins[i - 1], uint8_t(currentChannel.relayMode));
+                if (analogRead(channelsPins[i - 1]) >= slaveChannel.data.sensorMode.threshold && channels_state[i - 1] == !uint8_t(slaveChannel.relayMode)) {
+                    //digitalWrite(channelsPins[i - 1], uint8_t(currentChannel.relayMode));
+                    channels_state[i - 1] = uint8_t(slaveChannel.relayMode);
+                    radio.setPackageType(CONTROL_PACKAGE);
+                    radio.sendPackage(slaveChannel.relayMode);
                     timers[i - 1] = millis();
                 }
 
-                if (millis() - timers[i - 1] > currentChannel.data.sensorMode.workMinute * 60000 + currentChannel.data.sensorMode.workSecond * 1000 && digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode)) {
-                    digitalWrite(channelsPins[i - 1], !uint8_t(currentChannel.relayMode));
+                if (millis() - timers[i - 1] > slaveChannel.data.sensorMode.workMinute * 60000 + slaveChannel.data.sensorMode.workSecond * 1000 && channels_state[i - 1] == uint8_t(slaveChannel.relayMode)) {
+                    //digitalWrite(channelsPins[i - 1], !uint8_t(currentChannel.relayMode));
+                    channels_state[i - 1] = !uint8_t(slaveChannel.relayMode);
+                    radio.setPackageType(CONTROL_PACKAGE);
+                    radio.sendPackage(!slaveChannel.relayMode);
                 }
             
 
@@ -97,24 +105,30 @@ void scheduelerTick(RtcDateTime& now) {
                else if (today == 0) today = 6; // sunday
                 
                
-               if (currentChannel.data.weekMode.days[today].enabled) {
+               if (slaveChannel.data.weekMode.days[today].enabled) {
                
-                    if (digitalRead(channelsPins[i - 1]) == !uint8_t(currentChannel.relayMode)) {
-                        if (now.Hour() == currentChannel.data.weekMode.days[today].startHour) {
-                            if (now.Minute() == currentChannel.data.weekMode.days[today].startMinute) {
-                                if (now.Second() >= currentChannel.data.weekMode.days[today].startSecond) {
-                                    digitalWrite(channelsPins[i - 1], uint8_t(currentChannel.relayMode));
+                    if (channels_state[i - 1] == !uint8_t(slaveChannel.relayMode)) {
+                        if (now.Hour() == slaveChannel.data.weekMode.days[today].startHour) {
+                            if (now.Minute() == slaveChannel.data.weekMode.days[today].startMinute) {
+                                if (now.Second() >= slaveChannel.data.weekMode.days[today].startSecond) {
+                                    //digitalWrite(channelsPins[i - 1], uint8_t(currentChannel.relayMode));
+                                    channels_state[i - 1] = uint8_t(slaveChannel.relayMode);
+                                    radio.setPackageType(CONTROL_PACKAGE);
+                                    radio.sendPackage(slaveChannel.relayMode);
                                 }
                             }
                         }
                     
                     }
 
-                    if (digitalRead(channelsPins[i - 1]) == uint8_t(currentChannel.relayMode)) {
-                        if (now.Hour() == currentChannel.data.weekMode.days[today].endHour) {
-                            if (now.Minute() == currentChannel.data.weekMode.days[today].endMinute) {
-                                if (now.Second() >= currentChannel.data.weekMode.days[today].endSecond) {
-                                    digitalWrite(channelsPins[i - 1], !uint8_t(currentChannel.relayMode));
+                    if (channels_state[i - 1] == uint8_t(slaveChannel.relayMode)) {
+                        if (now.Hour() == slaveChannel.data.weekMode.days[today].endHour) {
+                            if (now.Minute() == slaveChannel.data.weekMode.days[today].endMinute) {
+                                if (now.Second() >= slaveChannel.data.weekMode.days[today].endSecond) {
+                                    //digitalWrite(slavePins[i - 1], !uint8_t(slaveChannel.relayMode));
+                                    channels_state[i - 1] = !uint8_t(slaveChannel.relayMode);
+                                    radio.setPackageType(CONTROL_PACKAGE);
+                                    radio.sendPackage(!slaveChannel.relayMode);
                                 }
                             }
                         }
@@ -122,12 +136,11 @@ void scheduelerTick(RtcDateTime& now) {
                 }
 
                 break;
-               
+            }
 
+            ++i;
 
-
-        }
-        
+    } else {
+        i = 1;
     }
-
 }

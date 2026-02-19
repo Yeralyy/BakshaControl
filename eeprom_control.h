@@ -130,7 +130,7 @@ struct Channel {
 void initEEPROM(FSM& state);
 Channel getChannel(int8_t n);
 void putChannel(int8_t n, Channel& channel);
-void putChannel(int8_t n, Node& node);
+  void putChannel(int8_t n, Node& node);
 bool isFirstRun(void);
 void resetEEPROM(void);
 

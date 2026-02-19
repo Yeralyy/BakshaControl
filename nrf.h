@@ -36,11 +36,13 @@ class Radio : public RF24 {
 
         void radioInit(uint32_t deviceid, bool first_init = 0);
         bool sendPackage();
+        bool sendPackage(bool state);
         bool readPipe();
 
         uint16_t scanRadio(uint16_t timeout = 1000);
         bool pairSlave(uint16_t timeout = 1000);
         void scanDelete();
+        void setPackageType(PACKAGE_TYPE type);
 
         Node& operator [](int idx) {
             return scanResult[idx];
@@ -78,6 +80,10 @@ class Radio : public RF24 {
     
 };
 
+
+void Radio::setPackageType(PACKAGE_TYPE type) {
+    send_packet.type = type;
+}
 
 /*
 void Radio::_rxMode(uint8_t readingPipe) {
@@ -129,7 +135,7 @@ void Radio::radioInit(uint32_t deviceId, bool first_init = 0) {
 
     send_packet.deviceID = deviceId;
 
-    this->setPALevel(RF24_PA_LOW);
+    this->setPALevel(RF24_PA_HIGH);
     this->setPayloadSize(sizeof(send_packet));
 
     if (first_init) { // in first run slave will send his id and master will be listening one
@@ -181,11 +187,9 @@ uint16_t Radio::scanRadio(uint16_t timeout) {
             }
         }
         
-
         return count;
 
     } else return 0;
-    
 }
 
 void Radio::scanDelete() {
@@ -194,6 +198,29 @@ void Radio::scanDelete() {
 }
 
 bool Radio::sendPackage() {
+   unsigned long start_timer = micros(); // timeout count
+   bool report = this->write(&send_packet, sizeof(send_packet));
+   unsigned long end_timer = micros();
+
+
+   if (report) {
+    #if LOG
+    Serial.print(F("Transmission successful! "));  // payload was delivered
+    Serial.print(F("Time to transmit = "));
+    Serial.print(end_timer - start_timer);  // print the timer result
+    Serial.println(F(" us. Sent: "));
+    #endif
+   } else {
+    #if LOG 
+    Serial.println(F("Transmission failed or timed out"));  // payload was not delivered
+    #endif
+   }
+
+   return report;
+}
+
+bool Radio::sendPackage(bool state) {
+   send_packet.state = state;
    unsigned long start_timer = micros(); // timeout count
    bool report = this->write(&send_packet, sizeof(send_packet));
    unsigned long end_timer = micros();

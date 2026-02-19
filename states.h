@@ -10,6 +10,7 @@ enum FSM : uint8_t {
  CHANNELS,
  SENSORS,
  MODES,
+ NEW_CHANNEL
 };
 
 
